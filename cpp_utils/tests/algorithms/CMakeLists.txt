@@ -21,7 +21,7 @@ target_link_libraries(
     PRIVATE
         project_options
         project_warnings
-        algorithms
+        cpp_utils
         gmock_main
 )
 

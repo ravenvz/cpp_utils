@@ -18,7 +18,7 @@ target_link_libraries(
         project_warnings
         gmock_main
     PUBLIC
-        patterns
+        cpp_utils
 )
 
 gtest_discover_tests(${MODULE_TEST})

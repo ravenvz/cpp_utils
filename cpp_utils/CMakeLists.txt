@@ -6,18 +6,20 @@ target_include_directories(cpp_utils
         $<INSTALL_INTERFACE:include>
 )
 
-add_subdirectory(algorithms)
-add_subdirectory(datastructures)
-add_subdirectory(patterns)
-add_subdirectory(types)
+target_sources(cpp_utils
+INTERFACE
+    "${CMAKE_CURRENT_LIST_DIR}/include/algorithms/alg_ext.h"
+    "${CMAKE_CURRENT_LIST_DIR}/include/algorithms/optional_ext.h"
+    "${CMAKE_CURRENT_LIST_DIR}/include/algorithms/ranges_ext.h"
+    "${CMAKE_CURRENT_LIST_DIR}/include/algorithms/string_ext.h"
+    "${CMAKE_CURRENT_LIST_DIR}/include/datastructures/ImmutableTree.h"
+    "${CMAKE_CURRENT_LIST_DIR}/include/datastructures/Tree.h"
+    "${CMAKE_CURRENT_LIST_DIR}/include/patterns/Converter.h"
+    "${CMAKE_CURRENT_LIST_DIR}/include/types/NamedType.h"
+)
 
-target_link_libraries(
-    cpp_utils
+target_link_libraries(cpp_utils
     INTERFACE
-        date_wrapper_options
-        date_wrapper_warnings
-        algorithms
-        datastructures
-        patterns
-        types
+        project_options
+        project_warnings
 )

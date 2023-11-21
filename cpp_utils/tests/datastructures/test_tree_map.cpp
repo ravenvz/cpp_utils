@@ -1,4 +1,4 @@
-#include "datastructures/TreeMap.h"
+#include "cpp_utils/datastructures/TreeMap.h"
 #include "gmock/gmock.h"
 
 ds::TreeMap<std::string, int> make_sample_tree()
