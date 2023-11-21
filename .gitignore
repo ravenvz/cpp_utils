@@ -1,0 +1,9 @@
+build
+third_party
+Testing
+cmake-build-debug
+bin
+.vs
+.cache
+.gdb_history
+Session.vim
