@@ -3,7 +3,7 @@ set(MODULE patterns)
 add_library(${MODULE} INTERFACE)
 
 target_sources(${MODULE}
-PUBLIC
+INTERFACE
     "${CMAKE_CURRENT_LIST_DIR}/include/patterns/Converter.h"
 )
 

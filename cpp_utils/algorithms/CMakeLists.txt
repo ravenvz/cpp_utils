@@ -3,7 +3,7 @@ set(MODULE algorithms)
 add_library(${MODULE} INTERFACE)
 
 target_sources(${MODULE}
-PUBLIC
+INTERFACE
     "${CMAKE_CURRENT_LIST_DIR}/include/algorithms/alg_ext.h"
     "${CMAKE_CURRENT_LIST_DIR}/include/algorithms/optional_ext.h"
     "${CMAKE_CURRENT_LIST_DIR}/include/algorithms/ranges_ext.h"

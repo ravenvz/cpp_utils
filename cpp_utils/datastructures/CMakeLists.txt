@@ -3,7 +3,7 @@ set(MODULE datastructures)
 add_library(${MODULE} INTERFACE)
 
 target_sources(${MODULE}
-PUBLIC
+INTERFACE
     "${CMAKE_CURRENT_LIST_DIR}/include/datastructures/ImmutableTree.h"
     "${CMAKE_CURRENT_LIST_DIR}/include/datastructures/Tree.h"
 )
