@@ -1,6 +1,7 @@
 #include "datastructures/Tree.h"
 #include "gmock/gmock.h"
 
+using ::testing::ElementsAre;
 using namespace ds;
 
 auto make_sample_tree() -> ds::Tree<int>
@@ -111,8 +112,7 @@ TEST_F(TestTreeFixture, dsf_iterator_traversal)
     std::vector<int> actual;
     std::ranges::copy(sut, std::back_inserter(actual));
 
-    EXPECT_THAT(actual,
-                ::testing::ElementsAre(1, 2, 3, 4, 5, 12, 7, 8, 9, 5, 1, 2));
+    EXPECT_THAT(actual, ElementsAre(1, 2, 3, 4, 5, 12, 7, 8, 9, 5, 1, 2));
 }
 
 TEST_F(TestTreeFixture, dfs_iterator_with_multiroot_tree)
@@ -121,7 +121,7 @@ TEST_F(TestTreeFixture, dfs_iterator_with_multiroot_tree)
     std::vector<int> actual;
     std::ranges::copy(tree, std::back_inserter(actual));
 
-    EXPECT_THAT(actual, ::testing::ElementsAre(1, 2, 10, 3, 4, 5, 6, 7, 8, 9));
+    EXPECT_THAT(actual, ElementsAre(1, 2, 10, 3, 4, 5, 6, 7, 8, 9));
 }
 
 TEST_F(TestTreeFixture, test_mutating_dfs_iterator)
@@ -130,9 +130,8 @@ TEST_F(TestTreeFixture, test_mutating_dfs_iterator)
     std::vector<int> dfs_order;
     std::ranges::copy(sut, std::back_inserter(dfs_order));
 
-    EXPECT_THAT(
-        dfs_order,
-        ::testing::ElementsAre(2, 4, 6, 8, 10, 24, 14, 16, 18, 10, 2, 4));
+    EXPECT_THAT(dfs_order,
+                ElementsAre(2, 4, 6, 8, 10, 24, 14, 16, 18, 10, 2, 4));
 }
 
 TEST_F(TestTreeFixture, inserting_children_at_different_positions)
@@ -165,8 +164,34 @@ TEST_F(TestTreeFixture, inserting_children_at_different_positions)
     std::vector<int> actual_traversal;
     std::ranges::copy(tree, std::back_inserter(actual_traversal));
 
-    EXPECT_THAT(actual_traversal,
-                ::testing::ElementsAre(77, 6, 7, 3, 4, 9, 1, 12, 8));
+    EXPECT_THAT(actual_traversal, ElementsAre(77, 6, 7, 3, 4, 9, 1, 12, 8));
+}
+
+TEST_F(TestTreeFixture, inserting_from_container)
+{
+    std::vector<int> container{22, 33, 44};
+
+    auto it = sut.insert(std::ranges::find(sut, 3),
+                         DestinationPosition{1},
+                         begin(container),
+                         end(container));
+
+    EXPECT_EQ(it, std::ranges::find(sut, 22));
+    EXPECT_THAT(sut,
+                ElementsAre(1, 2, 3, 4, 22, 33, 44, 5, 12, 7, 8, 9, 5, 1, 2));
+}
+
+TEST_F(TestTreeFixture, inserting_from_empty_container_has_no_effect)
+{
+    std::vector<int> container;
+
+    auto it = sut.insert(std::ranges::find(sut, 3),
+                         DestinationPosition{1},
+                         begin(container),
+                         end(container));
+
+    EXPECT_EQ(sut.end(), it);
+    EXPECT_THAT(sut, ElementsAre(1, 2, 3, 4, 5, 12, 7, 8, 9, 5, 1, 2));
 }
 
 TEST_F(TestTreeFixture, test_convertion_of_iterator_to_const_iterator)
@@ -176,7 +201,7 @@ TEST_F(TestTreeFixture, test_convertion_of_iterator_to_const_iterator)
     std::vector<int> traversal;
     std::ranges::copy(it, sut.cend(), std::back_inserter(traversal));
 
-    EXPECT_THAT(traversal, ::testing::ElementsAre(12, 7, 8, 9, 5, 1, 2));
+    EXPECT_THAT(traversal, ElementsAre(12, 7, 8, 9, 5, 1, 2));
 }
 
 TEST_F(TestTreeFixture, tranforming_tree)
@@ -189,7 +214,7 @@ TEST_F(TestTreeFixture, tranforming_tree)
 
     EXPECT_THAT(
         traversal,
-        ::testing::ElementsAre(
+        ElementsAre(
             "1", "2", "3", "4", "5", "12", "7", "8", "9", "5", "1", "2"));
 }
 
@@ -203,8 +228,7 @@ TEST_F(TestTreeFixture, transforming_multiroot_tree)
     std::ranges::copy(mapped, std::back_inserter(traversal));
 
     EXPECT_THAT(traversal,
-                ::testing::ElementsAre(
-                    "1", "2", "10", "3", "4", "5", "6", "7", "8", "9"));
+                ElementsAre("1", "2", "10", "3", "4", "5", "6", "7", "8", "9"));
 }
 
 TEST_F(TestTreeFixture, test_deep_copy)
@@ -227,29 +251,29 @@ TEST_F(TestTreeFixture, flatten)
 {
     const auto tree = make_multiroot_sample_tree();
     EXPECT_THAT(tree.flatten(),
-                ::testing::ElementsAre(std::nullopt,
-                                       std::nullopt,
-                                       1,
-                                       4,
-                                       9,
-                                       std::nullopt,
-                                       2,
-                                       3,
-                                       std::nullopt,
-                                       5,
-                                       std::nullopt,
-                                       std::nullopt,
-                                       10,
-                                       std::nullopt,
-                                       std::nullopt,
-                                       6,
-                                       7,
-                                       std::nullopt,
-                                       std::nullopt,
-                                       std::nullopt,
-                                       8,
-                                       std::nullopt,
-                                       std::nullopt));
+                ElementsAre(std::nullopt,
+                            std::nullopt,
+                            1,
+                            4,
+                            9,
+                            std::nullopt,
+                            2,
+                            3,
+                            std::nullopt,
+                            5,
+                            std::nullopt,
+                            std::nullopt,
+                            10,
+                            std::nullopt,
+                            std::nullopt,
+                            6,
+                            7,
+                            std::nullopt,
+                            std::nullopt,
+                            std::nullopt,
+                            8,
+                            std::nullopt,
+                            std::nullopt));
 }
 
 TEST_F(TestTreeFixture, unflatted)
@@ -277,7 +301,8 @@ TEST_F(TestTreeFixture, unflatted)
                                               8,
                                               std::nullopt,
                                               std::nullopt};
-    const auto restored = ds::Tree<int>::unflatten(flattened);
+    ds::Tree<int> restored{std::make_move_iterator(flattened.begin()),
+                           std::make_move_iterator(flattened.end())};
     const auto tree = make_multiroot_sample_tree();
 
     EXPECT_EQ(tree, restored);
@@ -285,9 +310,9 @@ TEST_F(TestTreeFixture, unflatted)
 
 TEST_F(TestTreeFixture, flatten_and_unflatten)
 {
-    const auto flattened = sut.flatten();
+    auto flattened = sut.flatten();
 
-    const auto restored = ds::Tree<int>::unflatten(flattened);
+    const Tree<int> restored{cbegin(flattened), cend(flattened)};
 
     EXPECT_EQ(sut, restored);
 }
@@ -299,8 +324,8 @@ TEST_F(TestTreeFixture, take_subtree)
 
     const auto subtree = tree.take_subtree(it);
 
-    EXPECT_THAT(tree, ::testing::ElementsAre(1, 2, 10, 3, 4, 9));
-    EXPECT_THAT(subtree, ::testing::ElementsAre(5, 6, 7, 8));
+    EXPECT_THAT(tree, ElementsAre(1, 2, 10, 3, 4, 9));
+    EXPECT_THAT(subtree, ElementsAre(5, 6, 7, 8));
 }
 
 TEST_F(TestTreeFixture, erase_subtree)
@@ -310,7 +335,14 @@ TEST_F(TestTreeFixture, erase_subtree)
 
     tree.erase(it);
 
-    EXPECT_THAT(tree, ::testing::ElementsAre(1, 2, 10, 3, 9));
+    EXPECT_THAT(tree, ElementsAre(1, 2, 10, 3, 9));
+}
+
+TEST_F(TestTreeFixture, erase_at_end_does_nothing)
+{
+    sut.erase(sut.end());
+
+    EXPECT_THAT(sut, ElementsAre(1, 2, 3, 4, 5, 12, 7, 8, 9, 5, 1, 2));
 }
 
 TEST_F(TestTreeFixture, move_subtree_to_itself)
@@ -364,7 +396,7 @@ TEST_F(TestTreeFixture, moving_nodes_between_leaves)
                     destination_parent,
                     DestinationPosition{0});
 
-    EXPECT_THAT(tree, ::testing::ElementsAre(1, 3, 4, 5, 6, 7, 8, 9, 2, 10));
+    EXPECT_THAT(tree, ElementsAre(1, 3, 4, 5, 6, 7, 8, 9, 2, 10));
 }
 
 TEST_F(TestTreeFixture, moving_nodes_up_within_same_parent)
@@ -434,7 +466,7 @@ TEST_F(TestTreeFixture, moving_nodes_down_within_same_parent)
                     tree.end(),
                     DestinationPosition{3});
 
-    EXPECT_THAT(tree, ::testing::ElementsAre(2, 3, 1, 4));
+    EXPECT_THAT(tree, ElementsAre(2, 3, 1, 4));
     EXPECT_EQ(expected, tree);
 }
 
@@ -645,8 +677,7 @@ TEST_F(TestTreeFixture, moving_nodes_between_roots_from_left_to_mid)
                     DestinationPosition{2});
 
     std::cout << tree.to_string() << std::endl;
-    EXPECT_THAT(tree,
-                ::testing::ElementsAre(1, 4, 5, 6, 7, 8, 2, 3, 10, 11, 9, 12));
+    EXPECT_THAT(tree, ElementsAre(1, 4, 5, 6, 7, 8, 2, 3, 10, 11, 9, 12));
 }
 
 TEST_F(TestTreeFixture, moving_nodes_between_roots_from_right_to_left)
@@ -692,8 +723,7 @@ TEST_F(TestTreeFixture, moving_nodes_between_roots_from_right_to_left)
                     destination_parent,
                     DestinationPosition{0});
 
-    EXPECT_THAT(tree,
-                ::testing::ElementsAre(1, 2, 3, 10, 11, 6, 4, 5, 7, 8, 9, 12));
+    EXPECT_THAT(tree, ElementsAre(1, 2, 3, 10, 11, 6, 4, 5, 7, 8, 9, 12));
 }
 
 TEST_F(TestTreeFixture, moving_nodes_between_roots_from_mid_to_right)
@@ -739,8 +769,7 @@ TEST_F(TestTreeFixture, moving_nodes_between_roots_from_mid_to_right)
                     destination_parent,
                     DestinationPosition{4});
 
-    EXPECT_THAT(tree,
-                ::testing::ElementsAre(1, 2, 5, 6, 7, 8, 9, 12, 3, 10, 11, 4));
+    EXPECT_THAT(tree, ElementsAre(1, 2, 5, 6, 7, 8, 9, 12, 3, 10, 11, 4));
 }
 
 TEST_F(TestTreeFixture, following_parents)
@@ -780,7 +809,8 @@ TEST_F(TestTreeFixture, returns_root_children_when_given_end_iterator)
     EXPECT_TRUE(std::ranges::equal(expected, children));
 }
 
-TEST_F(TestTreeFixture, returns_node_position_in_children) {
+TEST_F(TestTreeFixture, returns_node_position_in_children)
+{
     EXPECT_EQ(1, sut.position_in_children(std::ranges::find(sut, 5)));
     EXPECT_EQ(0, sut.position_in_children(std::ranges::find(sut, 1)));
     EXPECT_EQ(0, sut.position_in_children(sut.cend()));

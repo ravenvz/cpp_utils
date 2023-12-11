@@ -2,6 +2,7 @@
 #define TREE_H_1MKPBXLX
 
 #include "algorithms/alg_ext.h"
+#include "datastructures/TreeCommon.h"
 #include "types/NamedType.h"
 #include <algorithm>
 #include <concepts>
@@ -16,19 +17,7 @@
 #include <utility>
 #include <vector>
 
-#include <limits>
-
 namespace ds {
-
-struct CountTag { };
-using Count = types::ImplicitNamedType<int64_t, CountTag>;
-
-struct SourcePosTag { };
-using SourcePosition = types::ImplicitNamedType<int64_t, SourcePosTag>;
-
-struct DestinationPosTag { };
-using DestinationPosition =
-    types::ImplicitNamedType<int64_t, DestinationPosTag>;
 
 template <std::default_initializable PayloadT> class Tree {
 private:
@@ -42,14 +31,20 @@ private:
         {
         }
 
-        auto insert(std::unique_ptr<Node> child,
-                    const std::optional<DestinationPosition>& position) -> void
+        auto insert(std::unique_ptr<Node> child) -> void
+        {
+            child->parent = this;
+            children.push_back(std::move(child));
+            rebuild_position_indexes(std::ssize(children) - 1);
+        }
+
+        auto insert(std::unique_ptr<Node> child, DestinationPosition position)
+            -> void
         {
             child->parent = this;
             const auto num_children{static_cast<int64_t>(children.size())};
-            const auto destination_pos{static_cast<int64_t>(
-                position.value_or(DestinationPosition{num_children}))};
-            const auto insert_pos{std::min(num_children, destination_pos)};
+            const auto insert_pos{
+                std::min(static_cast<int64_t>(position), num_children)};
             auto insert_it = children.begin() + insert_pos;
             auto first = children.insert(insert_it, std::move(child));
             rebuild_position_indexes(first - children.begin());
@@ -235,6 +230,30 @@ public:
 
     Tree() = default;
 
+    Tree(std::ranges::input_range auto&& r)
+        : Tree{std::ranges::begin(r), std::ranges::end(r)}
+    {
+    }
+
+    template <std::input_iterator I, std::sentinel_for<I> S>
+    Tree(I first, S last)
+    {
+        std::queue<iterator> frontier;
+        frontier.push(begin());
+
+        ++first;
+        ++first;
+
+        for (; not frontier.empty() and first != last; ++first) {
+            auto parent_it = frontier.front();
+            frontier.pop();
+            for (; first->has_value(); ++first) {
+                auto it = insert(parent_it, first->value());
+                frontier.push(it);
+            }
+        }
+    }
+
     ~Tree() { release_subtree(std::move(root)); }
 
     Tree(const Tree& other)
@@ -256,6 +275,85 @@ public:
         }
         root = std::move(other.transform(std::identity{}).root);
         return *this;
+    }
+
+    auto insert(iterator parent, PayloadT payload) -> iterator
+    {
+        auto* true_parent{parent == end() ? root.get() : parent.ptr};
+        auto child = std::make_unique<Node>(std::move(payload));
+        auto* child_ptr = child.get();
+        true_parent->insert(std::move(child));
+        return iterator{child_ptr};
+    }
+
+    auto insert(iterator parent,
+                PayloadT payload,
+                DestinationPosition destination) -> iterator
+    {
+        auto* true_parent{parent == end() ? root.get() : parent.ptr};
+        auto child = std::make_unique<Node>(std::move(payload));
+        auto* child_ptr = child.get();
+        true_parent->insert(std::move(child), destination);
+        return iterator{child_ptr};
+    }
+
+    template <std::ranges::input_range R, class Proj = std::identity>
+    auto
+    insert(iterator parent, DestinationPosition position, R&& r, Proj proj = {})
+    {
+        return insert(parent,
+                      position,
+                      std::ranges::begin(r),
+                      std::ranges::end(r),
+                      std::ref(proj));
+    }
+
+    template <std::input_iterator I,
+              std::sentinel_for<I> S,
+              class Proj = std::identity>
+    auto insert(iterator parent,
+                DestinationPosition position,
+                I first,
+                S last,
+                Proj proj = {}) -> iterator
+    {
+        if (first == last) {
+            return end();
+        }
+        auto* true_parent{parent == end() ? root.get() : parent.ptr};
+        std::vector<std::unique_ptr<Node>> buffer(
+            static_cast<size_t>(last - first));
+        std::transform(first, last, buffer.begin(), [&](auto&& source) {
+            return std::make_unique<Node>(std::invoke(proj, source));
+        });
+        auto* ptr = buffer.front().get();
+        true_parent->insert(position,
+                            std::make_move_iterator(buffer.begin()),
+                            std::make_move_iterator(buffer.end()));
+        return iterator{ptr};
+    }
+
+    auto erase(iterator subtree_root) -> void
+    {
+        if (subtree_root == end()) {
+            return;
+        }
+        release_subtree(take_subtree(subtree_root).root);
+    }
+
+    auto move_nodes(iterator source_parent,
+                    SourcePosition source_pos,
+                    Count count,
+                    iterator destination_parent,
+                    DestinationPosition destination_pos) -> void
+    {
+        auto* source_parent_ptr{source_parent == end() ? root.get()
+                                                       : source_parent.ptr};
+        auto* destination_parent_ptr{
+            destination_parent == end() ? root.get() : destination_parent.ptr};
+
+        source_parent_ptr->move(
+            source_pos, count, destination_parent_ptr, destination_pos);
     }
 
     auto parent(const_iterator it) const -> const_iterator
@@ -288,44 +386,12 @@ public:
             true_ptr->children, [](const auto& node) { return node->payload; });
     }
 
-    auto insert(iterator parent,
-                PayloadT payload,
-                const std::optional<DestinationPosition>& pos = std::nullopt)
-        -> iterator
-    {
-        auto* true_parent{parent == end() ? root.get() : parent.ptr};
-        auto child = std::make_unique<Node>(std::move(payload));
-        auto* child_ptr = child.get();
-        true_parent->insert(std::move(child), pos);
-        return iterator{child_ptr};
-    }
-
     auto take_subtree(iterator subtree_root) -> Tree
     {
         auto* parent = subtree_root.ptr->parent;
         Tree subtree;
-        subtree.root->insert(parent->take(subtree_root.ptr), std::nullopt);
+        subtree.root->insert(parent->take(subtree_root.ptr));
         return subtree;
-    }
-
-    auto move_nodes(iterator source_parent,
-                    SourcePosition source_pos,
-                    Count count,
-                    iterator destination_parent,
-                    DestinationPosition destination_pos) -> void
-    {
-        auto* source_parent_ptr{source_parent == end() ? root.get()
-                                                       : source_parent.ptr};
-        auto* destination_parent_ptr{
-            destination_parent == end() ? root.get() : destination_parent.ptr};
-
-        source_parent_ptr->move(
-            source_pos, count, destination_parent_ptr, destination_pos);
-    }
-
-    auto erase(iterator subtree_root) -> void
-    {
-        release_subtree(take_subtree(subtree_root).root);
     }
 
     auto position_in_children(const_iterator it) const -> int64_t
@@ -336,18 +402,35 @@ public:
     template <typename Func>
     auto transform(Func func) const -> Tree<TransformResultT<Func>>
     {
+        return transform(cend(), func);
+    }
+
+    template <typename Func>
+    auto transform(const_iterator subtree_root, Func func) const
+        -> Tree<TransformResultT<Func>>
+    {
         using Y = TransformResultT<Func>;
         Tree<Y> mapped;
+
         std::queue<std::pair<const Node*, typename Tree<Y>::iterator>> frontier;
-        frontier.push({root.get(), mapped.end()});
+        if (subtree_root == cend()) {
+            for (auto& child : root->children) {
+                auto mapped_it =
+                    mapped.insert(mapped.end(), func(child->payload));
+                frontier.push({child.get(), mapped_it});
+            }
+        }
+        else {
+            auto mapped_it =
+                mapped.insert(mapped.end(), func(subtree_root.ptr->payload));
+            frontier.push({subtree_root.ptr, mapped_it});
+        }
 
         while (not frontier.empty()) {
-            auto entry = frontier.front();
-            auto* current = entry.first;
-            auto mapped_it = entry.second;
+            auto [current, mapped_it] = frontier.front();
             frontier.pop();
 
-            for (const auto& child : current->children) {
+            for (auto& child : current->children) {
                 auto it = mapped.insert(mapped_it, func(child->payload));
                 frontier.push({child.get(), it});
             }
@@ -356,9 +439,25 @@ public:
         return mapped;
     }
 
-    friend auto operator==(const Tree& lhs, const Tree& rhs) -> bool
+    template <typename Func> auto map(iterator subtree_root, Func func) -> void
     {
-        return std::ranges::equal(lhs, rhs);
+        if (subtree_root == end()) {
+            std::for_each(begin(), end(), func);
+            return;
+        }
+
+        std::stack<Node*> frontier;
+        frontier.push(subtree_root.ptr);
+
+        while (not frontier.empty()) {
+            auto* current = frontier.top();
+            frontier.pop();
+
+            func(current->payload);
+            std::ranges::for_each(current->children, [&frontier](auto& child) {
+                frontier.push(child.get());
+            });
+        }
     }
 
     auto flatten() const -> std::vector<std::optional<PayloadT>>
@@ -382,43 +481,6 @@ public:
 
         return flattened;
     }
-
-    static auto unflatten(std::span<const std::optional<PayloadT>> flat) -> Tree
-    {
-        Tree<PayloadT> restored;
-        std::queue<iterator> frontier;
-        frontier.push(restored.begin());
-
-        for (size_t i{2}; not frontier.empty(); ++i) {
-            auto parent_it = frontier.front();
-            frontier.pop();
-            for (; flat[i]; ++i) {
-                auto it =
-                    restored.insert(parent_it, std::move(flat[i].value()));
-                frontier.push(it);
-            }
-        }
-
-        return restored;
-    }
-
-    auto begin() -> iterator { return ++iterator(root.get()); }
-
-    auto end() -> iterator { return iterator(nullptr); }
-
-    auto begin() const -> const_iterator
-    {
-        return ++const_iterator(root.get());
-    }
-
-    auto end() const -> const_iterator { return const_iterator(nullptr); }
-
-    auto cbegin() const -> const_iterator
-    {
-        return ++const_iterator(root.get());
-    }
-
-    auto cend() const -> const_iterator { return const_iterator(nullptr); }
 
     auto to_string() const -> std::string
     {
@@ -444,6 +506,53 @@ public:
         }
 
         return ss.str();
+    }
+
+    auto begin() -> iterator { return ++iterator(root.get()); }
+
+    auto end() -> iterator { return iterator(nullptr); }
+
+    auto begin() const -> const_iterator
+    {
+        return ++const_iterator(root.get());
+    }
+
+    auto end() const -> const_iterator { return const_iterator(nullptr); }
+
+    auto cbegin() const -> const_iterator
+    {
+        return ++const_iterator(root.get());
+    }
+
+    auto cend() const -> const_iterator { return const_iterator(nullptr); }
+
+    friend auto operator==(const Tree& lhs, const Tree& rhs) -> bool
+    {
+        // Obviously DFS alone cannot be used for comparing trees, so we compare
+        // children sizes along with DFS iteration.
+        auto left_it = lhs.cbegin();
+        auto right_it = rhs.cbegin();
+
+        for (; left_it != lhs.cend() or right_it != rhs.cend();
+             ++left_it, ++right_it) {
+            if (left_it != lhs.cend() and left_it == rhs.cend()) {
+                return false;
+            }
+            if (left_it == lhs.cend() and right_it != rhs.cend()) {
+                return false;
+            }
+            if (left_it == lhs.cend() and right_it == rhs.cend()) {
+                return true;
+            }
+            if (*left_it != *right_it) {
+                return false;
+            }
+            if (lhs.children(left_it).size() != rhs.children(right_it).size()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
 private:

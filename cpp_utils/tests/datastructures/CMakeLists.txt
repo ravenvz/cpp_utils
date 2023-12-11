@@ -3,8 +3,7 @@ set(MODULE_TEST test_datastructures)
 add_executable(${MODULE_TEST})
 target_sources(${MODULE_TEST}
 PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/test_immutable_tree.cpp"
-    "${CMAKE_CURRENT_LIST_DIR}/test_tree.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/test_trees.cpp"
 )
 
 # This a workaround to prevent linking errors on Windows.
