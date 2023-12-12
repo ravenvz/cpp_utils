@@ -113,3 +113,9 @@ TEST(TestStringUtils, test_split)
     EXPECT_THAT(split(",", ','),
                 ::testing::ElementsAre(std::string{}, std::string{}));
 }
+
+TEST(TestStringUtils, test_split_overload)
+{
+    EXPECT_THAT(split("I..am..strange..data", ".."),
+                ::testing::ElementsAre("I", "am", "strange", "data"));
+}

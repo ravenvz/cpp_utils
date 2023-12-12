@@ -151,6 +151,18 @@ inline auto split(std::string_view str, char delimeter)
     return result;
 }
 
+constexpr auto split(std::string_view str, std::string_view delimiter)
+    -> std::vector<std::string_view>
+{
+    std::vector<std::string_view> result;
+    for (size_t left{0}, right{0}; right != str.npos;
+         left = right + delimiter.size()) {
+        right = str.find(delimiter, left);
+        result.push_back(str.substr(left, right - left));
+    }
+    return result;
+}
+
 } // namespace alg
 
 #endif /* end of include guard: STRING_EXT_H_0CNTGIMQ */
