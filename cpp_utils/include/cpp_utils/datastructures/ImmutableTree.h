@@ -1,8 +1,8 @@
 #ifndef IMMUTABLETREE_H_AAE9JBHV
 #define IMMUTABLETREE_H_AAE9JBHV
 
-#include "algorithms/alg_ext.h"
-#include "datastructures/TreeCommon.h"
+#include "cpp_utils/algorithms/alg_ext.h"
+#include "cpp_utils/datastructures/TreeCommon.h"
 #include <algorithm>
 #include <concepts>
 #include <cstdint>

@@ -1,5 +1,5 @@
-#include "algorithms/string_ext.h"
-#include "patterns/Converter.h"
+#include "cpp_utils/algorithms/string_ext.h"
+#include "cpp_utils/patterns/Converter.h"
 #include "gtest/gtest.h"
 
 using namespace patterns;

@@ -1,7 +1,7 @@
 #ifndef TREECOMMON_H_HPODLZ4K
 #define TREECOMMON_H_HPODLZ4K
 
-#include "types/NamedType.h"
+#include "cpp_utils/types/NamedType.h"
 #include <cstdint>
 
 namespace details {

@@ -1,8 +1,8 @@
 #ifndef TREE_H_RQOZCKEL
 #define TREE_H_RQOZCKEL
 
-#include "algorithms/alg_ext.h"
-#include "algorithms/optional_ext.h"
+#include "cpp_utils/algorithms/alg_ext.h"
+#include "cpp_utils/algorithms/optional_ext.h"
 #include <concepts>
 #include <exception>
 #include <functional>

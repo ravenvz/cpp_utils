@@ -8,14 +8,14 @@ target_include_directories(cpp_utils
 
 target_sources(cpp_utils
 INTERFACE
-    "${CMAKE_CURRENT_LIST_DIR}/include/algorithms/alg_ext.h"
-    "${CMAKE_CURRENT_LIST_DIR}/include/algorithms/optional_ext.h"
-    "${CMAKE_CURRENT_LIST_DIR}/include/algorithms/ranges_ext.h"
-    "${CMAKE_CURRENT_LIST_DIR}/include/algorithms/string_ext.h"
-    "${CMAKE_CURRENT_LIST_DIR}/include/datastructures/ImmutableTree.h"
-    "${CMAKE_CURRENT_LIST_DIR}/include/datastructures/Tree.h"
-    "${CMAKE_CURRENT_LIST_DIR}/include/patterns/Converter.h"
-    "${CMAKE_CURRENT_LIST_DIR}/include/types/NamedType.h"
+    "${CMAKE_CURRENT_LIST_DIR}/include/cpp_utils/algorithms/alg_ext.h"
+    "${CMAKE_CURRENT_LIST_DIR}/include/cpp_utils/algorithms/optional_ext.h"
+    "${CMAKE_CURRENT_LIST_DIR}/include/cpp_utils/algorithms/ranges_ext.h"
+    "${CMAKE_CURRENT_LIST_DIR}/include/cpp_utils/algorithms/string_ext.h"
+    "${CMAKE_CURRENT_LIST_DIR}/include/cpp_utils/datastructures/ImmutableTree.h"
+    "${CMAKE_CURRENT_LIST_DIR}/include/cpp_utils/datastructures/Tree.h"
+    "${CMAKE_CURRENT_LIST_DIR}/include/cpp_utils/patterns/Converter.h"
+    "${CMAKE_CURRENT_LIST_DIR}/include/cpp_utils/types/NamedType.h"
 )
 
 target_link_libraries(cpp_utils

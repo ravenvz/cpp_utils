@@ -1,4 +1,4 @@
-#include "datastructures/Tree.h"
+#include "cpp_utils/datastructures/Tree.h"
 #include "gmock/gmock.h"
 
 using ::testing::ElementsAre;

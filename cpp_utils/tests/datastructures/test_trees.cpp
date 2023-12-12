@@ -1,5 +1,5 @@
-#include "datastructures/ImmutableTree.h"
-#include "datastructures/Tree.h"
+#include "cpp_utils/datastructures/ImmutableTree.h"
+#include "cpp_utils/datastructures/Tree.h"
 #include "gmock/gmock.h"
 #include <ranges>
 #include <tuple>

@@ -1,9 +1,9 @@
 #ifndef TREE_H_1MKPBXLX
 #define TREE_H_1MKPBXLX
 
-#include "algorithms/alg_ext.h"
-#include "datastructures/TreeCommon.h"
-#include "types/NamedType.h"
+#include "cpp_utils/algorithms/alg_ext.h"
+#include "cpp_utils/datastructures/TreeCommon.h"
+#include "cpp_utils/types/NamedType.h"
 #include <algorithm>
 #include <concepts>
 #include <functional>

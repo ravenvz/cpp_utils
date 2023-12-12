@@ -1,4 +1,4 @@
-#include "algorithms/string_ext.h"
+#include "cpp_utils/algorithms/string_ext.h"
 #include <gmock/gmock.h>
 
 using namespace alg;
