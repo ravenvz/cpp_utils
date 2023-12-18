@@ -333,6 +333,29 @@ public:
         return iterator{ptr};
     }
 
+    auto insert_subtree(iterator parent,
+                        const Tree& other,
+                        DestinationPosition position) -> void
+    {
+        std::queue<std::pair<iterator, const Node*>> frontier;
+
+        for (const auto& child : other.root->children) {
+            auto child_it = insert(parent, child->payload, position);
+            ++position;
+            frontier.push({child_it, child.get()});
+        }
+
+        while (not frontier.empty()) {
+            auto [it, other_ptr] = frontier.front();
+            frontier.pop();
+
+            for (const auto& child : other_ptr->children) {
+                auto child_it = insert(it, child->payload);
+                frontier.push({child_it, child.get()});
+            }
+        }
+    }
+
     auto erase(iterator subtree_root) -> void
     {
         if (subtree_root == end()) {

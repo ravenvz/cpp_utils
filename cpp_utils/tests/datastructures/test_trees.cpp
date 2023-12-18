@@ -1,4 +1,4 @@
-#include "cpp_utils/datastructures/ImmutableTree.h"
+#include "cpp_utils/datastructures/LinearTree.h"
 #include "cpp_utils/datastructures/Tree.h"
 #include "gmock/gmock.h"
 #include <ranges>
@@ -121,9 +121,9 @@ public:
     }
 };
 
-using MyTypes = ::testing::Types<
-    std::tuple<Tree<int>, Tree<std::string>>,
-    std::tuple<ImmutableTree<int>, ImmutableTree<std::string>>>;
+using MyTypes =
+    ::testing::Types<std::tuple<Tree<int>, Tree<std::string>>,
+                     std::tuple<LinearTree<int>, LinearTree<std::string>>>;
 TYPED_TEST_SUITE(GenericTreeFixture, MyTypes);
 
 TYPED_TEST(GenericTreeFixture, dfs_iteration)
@@ -803,4 +803,29 @@ TYPED_TEST(GenericTreeFixture, take_subtree)
 
     EXPECT_THAT(tree, ::testing::ElementsAre(1, 2, 4, 5, 6, 7, 8, 9, 12));
     EXPECT_THAT(subtree, ::testing::ElementsAre(3, 10, 11));
+}
+
+TYPED_TEST(GenericTreeFixture, insert_empty_subtree)
+{
+    typename TestFixture::IntTree subtree;
+
+    this->sut.insert_subtree(
+        std::ranges::find(this->sut, 5), subtree, DestinationPosition{1});
+
+    EXPECT_THAT(this->sut, ElementsAre(1, 2, 10, 3, 4, 5, 6, 7, 8, 9));
+}
+
+TYPED_TEST(GenericTreeFixture, insert_subtree)
+{
+    typename TestFixture::IntTree subtree;
+    auto first = subtree.insert(subtree.end(), 101);
+    auto second = subtree.insert(first, 102);
+    subtree.insert(second, 103);
+    subtree.insert(second, 104);
+
+    this->sut.insert_subtree(
+        std::ranges::find(this->sut, 5), subtree, DestinationPosition{1});
+
+    EXPECT_THAT(this->sut,
+                ElementsAre(1, 2, 10, 3, 4, 5, 6, 101, 102, 103, 104, 7, 8, 9));
 }

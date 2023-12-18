@@ -17,7 +17,7 @@
 
 namespace ds {
 
-template <std::default_initializable T> class ImmutableTree {
+template <std::default_initializable T> class LinearTree {
 private:
     struct Node {
         int64_t parent{-1};
@@ -38,7 +38,7 @@ public:
         using element_type = v_type;
 
         friend class DfsIterator<const v_type, const n_type>;
-        friend class ImmutableTree;
+        friend class LinearTree;
 
         DfsIterator() = default;
 
@@ -124,13 +124,13 @@ public:
     using iterator = DfsIterator<value_type, Node>;
     using const_iterator = DfsIterator<const value_type, const Node>;
 
-    ImmutableTree(std::ranges::input_range auto&& r)
-        : ImmutableTree(std::ranges::begin(r), std::ranges::end(r))
+    LinearTree(std::ranges::input_range auto&& r)
+        : LinearTree(std::ranges::begin(r), std::ranges::end(r))
     {
     }
 
     template <std::input_iterator I, std::sentinel_for<I> S>
-    ImmutableTree(I first, S last)
+    LinearTree(I first, S last)
     {
         std::queue<iterator> frontier;
         frontier.push(begin());
@@ -145,15 +145,15 @@ public:
         }
     }
 
-    ImmutableTree() = default;
+    LinearTree() = default;
 
-    ImmutableTree(const ImmutableTree&) = default;
+    LinearTree(const LinearTree&) = default;
 
-    auto operator=(const ImmutableTree&) -> ImmutableTree& = default;
+    auto operator=(const LinearTree&) -> LinearTree& = default;
 
-    ImmutableTree(ImmutableTree&&) = default;
+    LinearTree(LinearTree&&) = default;
 
-    auto operator=(ImmutableTree&&) -> ImmutableTree& = default;
+    auto operator=(LinearTree&&) -> LinearTree& = default;
 
     auto insert(iterator parent, T payload) -> iterator
     {
@@ -226,6 +226,30 @@ public:
 
         fix_positions_and_parents(true_parent, position);
         return iterator{indexes.front(), storage};
+    }
+
+    auto insert_subtree(iterator parent,
+                        const LinearTree& other,
+                        DestinationPosition position) -> void
+    {
+        std::queue<std::pair<iterator, int64_t>> frontier;
+
+        for (auto child_id : other.get_node(0).children) {
+            auto it =
+                insert(parent, other.get_node(child_id).payload, position);
+            ++position;
+            frontier.push({it, child_id});
+        }
+
+        while (not frontier.empty()) {
+            auto [parent_it, current] = frontier.front();
+            frontier.pop();
+
+            for (auto child_id : other.get_node(current).children) {
+                auto it = insert(parent_it, other.get_node(child_id).payload);
+                frontier.push({it, child_id});
+            }
+        }
     }
 
     auto erase(iterator subtree) -> void
@@ -309,7 +333,7 @@ public:
                                      });
     }
 
-    auto take_subtree(iterator subtree_root) -> ImmutableTree
+    auto take_subtree(iterator subtree_root) -> LinearTree
     {
         auto tree = transform(subtree_root, std::identity{});
         erase(subtree_root);
@@ -322,19 +346,19 @@ public:
     }
 
     template <typename Func>
-    auto transform(Func func) const -> ImmutableTree<TransformResultT<Func>>
+    auto transform(Func func) const -> LinearTree<TransformResultT<Func>>
     {
         return transform(cend(), func);
     }
 
     template <typename Func>
     auto transform(const_iterator subtree_root, Func func) const
-        -> ImmutableTree<TransformResultT<Func>>
+        -> LinearTree<TransformResultT<Func>>
     {
         using Y = TransformResultT<Func>;
-        ImmutableTree<Y> mapped;
+        LinearTree<Y> mapped;
 
-        std::queue<std::pair<int64_t, typename ImmutableTree<Y>::iterator>>
+        std::queue<std::pair<int64_t, typename LinearTree<Y>::iterator>>
             frontier;
 
         if (subtree_root == cend()) {
@@ -457,8 +481,7 @@ public:
 
     auto cend() const -> const_iterator { return const_iterator{-1, storage}; }
 
-    friend auto operator==(const ImmutableTree& lhs, const ImmutableTree& rhs)
-        -> bool
+    friend auto operator==(const LinearTree& lhs, const LinearTree& rhs) -> bool
     {
         // Obviously DFS alone cannot be used for comparing trees, so we compare
         // children sizes along with DFS iteration.
@@ -559,32 +582,32 @@ private:
     }
 };
 
-static_assert(std::is_copy_constructible_v<ImmutableTree<int>::iterator>);
-static_assert(std::is_copy_constructible_v<ImmutableTree<int>::const_iterator>);
+static_assert(std::is_copy_constructible_v<LinearTree<int>::iterator>);
+static_assert(std::is_copy_constructible_v<LinearTree<int>::const_iterator>);
 
 // Iterator convertions
-static_assert(std::is_convertible_v<ImmutableTree<int>::iterator,
-                                    ImmutableTree<int>::iterator>);
-static_assert(std::is_convertible_v<ImmutableTree<int>::const_iterator,
-                                    ImmutableTree<int>::const_iterator>);
-static_assert(std::is_convertible_v<ImmutableTree<int>::iterator,
-                                    ImmutableTree<int>::const_iterator>);
-static_assert(not std::is_convertible_v<ImmutableTree<int>::const_iterator,
-                                        ImmutableTree<int>::iterator>);
+static_assert(std::is_convertible_v<LinearTree<int>::iterator,
+                                    LinearTree<int>::iterator>);
+static_assert(std::is_convertible_v<LinearTree<int>::const_iterator,
+                                    LinearTree<int>::const_iterator>);
+static_assert(std::is_convertible_v<LinearTree<int>::iterator,
+                                    LinearTree<int>::const_iterator>);
+static_assert(not std::is_convertible_v<LinearTree<int>::const_iterator,
+                                        LinearTree<int>::iterator>);
 
 // Prevents convertion from iterators from other types
-static_assert(not std::is_convertible_v<ImmutableTree<double>::iterator,
-                                        ImmutableTree<int>::iterator>);
-static_assert(not std::is_convertible_v<ImmutableTree<double>::const_iterator,
-                                        ImmutableTree<int>::const_iterator>);
+static_assert(not std::is_convertible_v<LinearTree<double>::iterator,
+                                        LinearTree<int>::iterator>);
+static_assert(not std::is_convertible_v<LinearTree<double>::const_iterator,
+                                        LinearTree<int>::const_iterator>);
 
 static_assert(
-    std::is_trivially_copy_constructible_v<ImmutableTree<int>::iterator>);
+    std::is_trivially_copy_constructible_v<LinearTree<int>::iterator>);
 static_assert(
-    std::is_trivially_copy_constructible_v<ImmutableTree<int>::const_iterator>);
+    std::is_trivially_copy_constructible_v<LinearTree<int>::const_iterator>);
 
-static_assert(std::forward_iterator<ImmutableTree<int>::iterator>);
-static_assert(std::forward_iterator<ImmutableTree<int>::const_iterator>);
+static_assert(std::forward_iterator<LinearTree<int>::iterator>);
+static_assert(std::forward_iterator<LinearTree<int>::const_iterator>);
 
 } // namespace ds
 
