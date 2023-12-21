@@ -165,28 +165,31 @@ public:
         return iterator{child_index, storage};
     }
 
-    auto insert(iterator parent, T payload, DestinationPosition destination)
+    auto insert(iterator parent, T payload, DestinationPosition insert_pos)
         -> iterator
     {
         const auto true_parent = find_true_index(parent);
+        throw_if_invalid_destination(true_parent, insert_pos);
         const auto child_index =
             insert_into_free_spot(Node{true_parent,
                                        std::move(payload),
-                                       destination,
+                                       insert_pos,
                                        std::vector<int64_t>()});
         auto& parent_children = get_node(true_parent).children;
-        parent_children.insert(parent_children.begin() + destination,
+        parent_children.insert(parent_children.begin() + insert_pos,
                                child_index);
-        fix_positions_and_parents(true_parent, destination);
+        fix_positions_and_parents(true_parent, insert_pos);
         return iterator{child_index, storage};
     }
 
     template <std::ranges::input_range R, class Proj = std::identity>
-    auto
-    insert(iterator parent, DestinationPosition position, R&& r, Proj proj = {})
+    auto insert(iterator parent,
+                DestinationPosition insert_pos,
+                R&& r,
+                Proj proj = {})
     {
         return insert(parent,
-                      position,
+                      insert_pos,
                       std::ranges::begin(r),
                       std::ranges::end(r),
                       std::ref(proj));
@@ -196,7 +199,7 @@ public:
               std::sentinel_for<I> S,
               class Proj = std::identity>
     auto insert(iterator parent,
-                DestinationPosition position,
+                DestinationPosition insert_pos,
                 I first,
                 S last,
                 Proj proj = {})
@@ -204,40 +207,57 @@ public:
         if (first == last) {
             return end();
         }
+
         const auto true_parent = find_true_index(parent);
+        throw_if_invalid_destination(true_parent, insert_pos);
+
         std::vector<int64_t> indexes(
             static_cast<size_t>(std::distance(first, last)));
-        int64_t pos = position;
-        std::transform(first, last, indexes.begin(), [&](auto&& source) {
-            return insert_into_free_spot(Node{true_parent,
-                                              std::invoke(proj, source),
-                                              pos++,
-                                              std::vector<int64_t>{}});
-        });
+        std::transform(
+            first, last, indexes.begin(), [&, i = 0](auto&& source) mutable {
+                return insert_into_free_spot(Node{true_parent,
+                                                  std::invoke(proj, source),
+                                                  insert_pos + i++,
+                                                  std::vector<int64_t>{}});
+            });
         auto& parent_children = get_node(true_parent).children;
 
 #ifdef __cpp_lib_containers_ranges
-        parent_children.insert_range(parent_children.begin() + position,
+        parent_children.insert_range(parent_children.begin() + insert_pos,
                                      indexes);
 #else
-        parent_children.insert(
-            parent_children.begin() + position, indexes.begin(), indexes.end());
+        parent_children.insert(parent_children.begin() + insert_pos,
+                               indexes.begin(),
+                               indexes.end());
 #endif
 
-        fix_positions_and_parents(true_parent, position);
+        fix_positions_and_parents(true_parent, insert_pos);
         return iterator{indexes.front(), storage};
     }
 
     auto insert_subtree(iterator parent,
                         const LinearTree& other,
-                        DestinationPosition position) -> void
+                        const std::optional<DestinationPosition>& insert_pos)
+        -> void
     {
+        insert_subtree(parent,
+                       other,
+                       insert_pos.value_or(DestinationPosition{std::ssize(
+                           get_node(find_true_index(parent)).children)}));
+    }
+
+    auto insert_subtree(iterator parent,
+                        const LinearTree& other,
+                        DestinationPosition insert_pos) -> void
+    {
+        throw_if_invalid_destination(parent.ptr, insert_pos);
+
         std::queue<std::pair<iterator, int64_t>> frontier;
 
         for (auto child_id : other.get_node(0).children) {
             auto it =
-                insert(parent, other.get_node(child_id).payload, position);
-            ++position;
+                insert(parent, other.get_node(child_id).payload, insert_pos);
+            ++insert_pos;
             frontier.push({it, child_id});
         }
 
@@ -274,6 +294,9 @@ public:
         const auto source_parent_index = find_true_index(source_parent);
         const auto destination_parent_index =
             find_true_index(destination_parent);
+
+        throw_if_invalid_source(source_parent_index, source_pos, count);
+        throw_if_invalid_destination(destination_parent_index, destination_pos);
 
         auto& source_children = get_node(source_parent_index).children;
         auto& destination_children =
@@ -579,6 +602,25 @@ private:
     auto get_node(int64_t storage_pos) -> Node&
     {
         return storage[static_cast<size_t>(storage_pos)];
+    }
+
+    auto throw_if_invalid_source(int64_t node_id,
+                                 SourcePosition source,
+                                 Count count) -> void
+    {
+        if (source < 0 or
+            source + count > std::ssize(get_node(node_id).children)) {
+            throw std::out_of_range{"Source position out of range"};
+        }
+    }
+
+    auto throw_if_invalid_destination(int64_t node_id,
+                                      DestinationPosition destination) -> void
+    {
+        if (destination < 0 or
+            destination > std::ssize(get_node(node_id).children)) {
+            throw std::out_of_range{"Destination out of range"};
+        }
     }
 };
 

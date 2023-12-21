@@ -264,6 +264,27 @@ TYPED_TEST(GenericTreeFixture, erasing_and_inserting_nodes)
     EXPECT_THAT(this->sut, ElementsAre(1, 77, 3, 4, 9, 22, 10, 11, 12, 13, 14));
 }
 
+TYPED_TEST(GenericTreeFixture, inserting_at_position)
+{
+    auto actual = this->sut.insert(
+        std::ranges::find(this->sut, 5), 77, DestinationPosition{1});
+
+    EXPECT_EQ(std::ranges::find(this->sut, 77), actual);
+    EXPECT_THAT(this->sut, ElementsAre(1, 2, 10, 3, 4, 5, 6, 77, 7, 8, 9));
+}
+
+TYPED_TEST(GenericTreeFixture, inserting_throws_when_destination_out_of_range)
+{
+    EXPECT_THROW(this->sut.insert(std::ranges::find(this->sut, 5),
+                                  77,
+                                  DestinationPosition{3}),
+                 std::out_of_range);
+    EXPECT_THROW(this->sut.insert(std::ranges::find(this->sut, 5),
+                                  77,
+                                  DestinationPosition{-1}),
+                 std::out_of_range);
+}
+
 TYPED_TEST(GenericTreeFixture, batch_insert)
 {
     /*
@@ -286,15 +307,78 @@ TYPED_TEST(GenericTreeFixture, batch_insert)
      */
     std::vector<int> source{20, 21, 22, 23, 24, 25};
 
-    auto it = this->sut.insert(std::ranges::find(this->sut, 5),
-                               DestinationPosition{1},
-                               std::make_move_iterator(begin(source)),
-                               std::make_move_iterator(end(source)));
+    auto it = this->sut.insert(
+        std::ranges::find(this->sut, 5), DestinationPosition{1}, source);
 
     EXPECT_EQ(it, std::ranges::find(this->sut, 20));
     EXPECT_THAT(
         this->sut,
         ElementsAre(1, 2, 10, 3, 4, 5, 6, 20, 21, 22, 23, 24, 25, 7, 8, 9));
+}
+
+TYPED_TEST(GenericTreeFixture,
+           batch_insert_throws_when_destination_out_of_range)
+{
+    std::vector<int> source{20, 21, 22, 23, 24, 25};
+
+    EXPECT_THROW(this->sut.insert(std::ranges::find(this->sut, 5),
+                                  DestinationPosition{700000},
+                                  source),
+                 std::out_of_range);
+}
+
+TYPED_TEST(GenericTreeFixture,
+           move_throws_when_source_count_or_destination_out_of_range)
+{
+    auto tree = TestFixture::make_multiroot_sample_tree();
+    auto source_parent = std::ranges::find(tree, 2);
+    auto destination_parent = std::ranges::find(tree, 5);
+
+    EXPECT_THROW(tree.move_nodes(source_parent,
+                                 SourcePosition{0},
+                                 Count{2},
+                                 destination_parent,
+                                 DestinationPosition{0}),
+                 std::out_of_range);
+    EXPECT_THROW(tree.move_nodes(source_parent,
+                                 SourcePosition{2},
+                                 Count{1},
+                                 destination_parent,
+                                 DestinationPosition{0}),
+                 std::out_of_range);
+    EXPECT_THROW(tree.move_nodes(source_parent,
+                                 SourcePosition{0},
+                                 Count{1},
+                                 destination_parent,
+                                 DestinationPosition{3}),
+                 std::out_of_range);
+}
+
+TYPED_TEST(GenericTreeFixture,
+           move_overload_throws_when_source_count_or_destination_out_of_range)
+{
+    auto tree = TestFixture::make_multiroot_sample_tree();
+    auto source_parent = std::ranges::find(tree, 2);
+    auto destination_parent = source_parent;
+
+    EXPECT_THROW(tree.move_nodes(source_parent,
+                                 SourcePosition{1},
+                                 Count{1},
+                                 destination_parent,
+                                 DestinationPosition{0}),
+                 std::out_of_range);
+    EXPECT_THROW(tree.move_nodes(source_parent,
+                                 SourcePosition{0},
+                                 Count{2},
+                                 destination_parent,
+                                 DestinationPosition{0}),
+                 std::out_of_range);
+    EXPECT_THROW(tree.move_nodes(source_parent,
+                                 SourcePosition{0},
+                                 Count{1},
+                                 destination_parent,
+                                 DestinationPosition{2}),
+                 std::out_of_range);
 }
 
 TYPED_TEST(GenericTreeFixture, move_subtree_to_itself)
@@ -619,9 +703,6 @@ TYPED_TEST(GenericTreeFixture, moving_nodes_between_roots_from_left_to_mid)
     auto source_parent = std::ranges::find(tree, 1);
     auto destination_parent = std::ranges::find(tree, 6);
 
-    std::cout << tree.to_string() << std::endl;
-    std::cout << std::endl;
-
     tree.move_nodes(source_parent,
                     SourcePosition{0},
                     Count{2},
@@ -829,3 +910,19 @@ TYPED_TEST(GenericTreeFixture, insert_subtree)
     EXPECT_THAT(this->sut,
                 ElementsAre(1, 2, 10, 3, 4, 5, 6, 101, 102, 103, 104, 7, 8, 9));
 }
+
+TYPED_TEST(GenericTreeFixture, insert_subtree_optional_overload)
+{
+    typename TestFixture::IntTree subtree;
+    auto first = subtree.insert(subtree.end(), 101);
+    auto second = subtree.insert(first, 102);
+    subtree.insert(second, 103);
+    subtree.insert(second, 104);
+
+    this->sut.insert_subtree(
+        std::ranges::find(this->sut, 5), subtree, std::nullopt);
+
+    EXPECT_THAT(this->sut,
+                ElementsAre(1, 2, 10, 3, 4, 5, 6, 7, 8, 101, 102, 103, 104, 9));
+}
+
