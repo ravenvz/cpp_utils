@@ -38,28 +38,24 @@ private:
             rebuild_position_indexes(std::ssize(children) - 1);
         }
 
-        auto insert(std::unique_ptr<Node> child, DestinationPosition position)
+        auto insert(std::unique_ptr<Node> child, DestinationPosition insert_pos)
             -> void
         {
+            throw_if_invalid_destination(insert_pos);
             child->parent = this;
-            const auto num_children{static_cast<int64_t>(children.size())};
-            const auto insert_pos{
-                std::min(static_cast<int64_t>(position), num_children)};
             auto insert_it = children.begin() + insert_pos;
             auto first = children.insert(insert_it, std::move(child));
             rebuild_position_indexes(first - children.begin());
         }
 
         template <typename InputIt>
-        auto insert(DestinationPosition position, InputIt first, InputIt last)
+        auto insert(DestinationPosition insert_pos, InputIt first, InputIt last)
             -> void
         {
             if (first == last) {
                 return;
             }
-            const auto insert_pos = std::min(
-                DestinationPosition{static_cast<int64_t>(children.size())},
-                position);
+            throw_if_invalid_destination(insert_pos);
             auto insert_it = children.begin() + insert_pos;
             auto it = children.insert(insert_it, first, last);
             rebuild_parent_pointers();
@@ -80,6 +76,8 @@ private:
                   Count count,
                   DestinationPosition destination) -> void
         {
+            throw_if_invalid_source(source, count);
+            throw_if_invalid_destination(destination);
             alg::slide(children.begin() + source,
                        children.begin() + source + count,
                        children.begin() + destination);
@@ -96,6 +94,9 @@ private:
                 move(source_pos, count, destination_pos);
                 return;
             }
+
+            throw_if_invalid_source(source_pos, count);
+
             auto [first, last] =
                 alg::slide(children.begin() + source_pos,
                            children.begin() + source_pos + count,
@@ -126,6 +127,29 @@ private:
             std::for_each(children.begin(),
                           children.end(),
                           [this](auto& child) { child->parent = this; });
+        }
+
+        auto throw_if_invalid_destination(DestinationPosition position) -> void
+        {
+            if (position < 0 or position > std::ssize(children)) {
+                throw std::out_of_range{"Destination out of range"};
+            }
+        }
+
+        auto throw_if_invalid_source(SourcePosition source_position,
+                                     Count count)
+        {
+            if (source_position < 0 or
+                source_position + count > std::ssize(children)) {
+                throw std::out_of_range{"Source position out of range"};
+            }
+        }
+
+        auto fit_destination(DestinationPosition position) -> int64_t
+        {
+            return std::clamp(static_cast<int64_t>(position),
+                              int64_t{0},
+                              std::ssize(children));
         }
     };
 
@@ -288,21 +312,23 @@ public:
 
     auto insert(iterator parent,
                 PayloadT payload,
-                DestinationPosition destination) -> iterator
+                DestinationPosition insert_pos) -> iterator
     {
         auto* true_parent{parent == end() ? root.get() : parent.ptr};
         auto child = std::make_unique<Node>(std::move(payload));
         auto* child_ptr = child.get();
-        true_parent->insert(std::move(child), destination);
+        true_parent->insert(std::move(child), insert_pos);
         return iterator{child_ptr};
     }
 
     template <std::ranges::input_range R, class Proj = std::identity>
-    auto
-    insert(iterator parent, DestinationPosition position, R&& r, Proj proj = {})
+    auto insert(iterator parent,
+                DestinationPosition insert_pos,
+                R&& r,
+                Proj proj = {})
     {
         return insert(parent,
-                      position,
+                      insert_pos,
                       std::ranges::begin(r),
                       std::ranges::end(r),
                       std::ref(proj));
@@ -312,7 +338,7 @@ public:
               std::sentinel_for<I> S,
               class Proj = std::identity>
     auto insert(iterator parent,
-                DestinationPosition position,
+                DestinationPosition insert_pos,
                 I first,
                 S last,
                 Proj proj = {}) -> iterator
@@ -327,7 +353,7 @@ public:
             return std::make_unique<Node>(std::invoke(proj, source));
         });
         auto* ptr = buffer.front().get();
-        true_parent->insert(position,
+        true_parent->insert(insert_pos,
                             std::make_move_iterator(buffer.begin()),
                             std::make_move_iterator(buffer.end()));
         return iterator{ptr};
@@ -335,13 +361,24 @@ public:
 
     auto insert_subtree(iterator parent,
                         const Tree& other,
-                        DestinationPosition position) -> void
+                        const std::optional<DestinationPosition>& insert_pos)
+        -> void
+    {
+        insert_subtree(parent,
+                       other,
+                       insert_pos.value_or(DestinationPosition{
+                           std::ssize(parent.ptr->children)}));
+    }
+
+    auto insert_subtree(iterator parent,
+                        const Tree& other,
+                        DestinationPosition insert_pos) -> void
     {
         std::queue<std::pair<iterator, const Node*>> frontier;
 
         for (const auto& child : other.root->children) {
-            auto child_it = insert(parent, child->payload, position);
-            ++position;
+            auto child_it = insert(parent, child->payload, insert_pos);
+            ++insert_pos;
             frontier.push({child_it, child.get()});
         }
 
