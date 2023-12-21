@@ -273,6 +273,16 @@ TYPED_TEST(GenericTreeFixture, inserting_at_position)
     EXPECT_THAT(this->sut, ElementsAre(1, 2, 10, 3, 4, 5, 6, 77, 7, 8, 9));
 }
 
+TYPED_TEST(GenericTreeFixture, inserting_at_optional_position)
+{
+    std::optional<DestinationPosition> maybe_pos{1};
+    auto actual = this->sut.insert(
+        std::ranges::find(this->sut, 5), 77, maybe_pos);
+
+    EXPECT_EQ(std::ranges::find(this->sut, 77), actual);
+    EXPECT_THAT(this->sut, ElementsAre(1, 2, 10, 3, 4, 5, 6, 77, 7, 8, 9));
+}
+
 TYPED_TEST(GenericTreeFixture, inserting_throws_when_destination_out_of_range)
 {
     EXPECT_THROW(this->sut.insert(std::ranges::find(this->sut, 5),
@@ -309,6 +319,38 @@ TYPED_TEST(GenericTreeFixture, batch_insert)
 
     auto it = this->sut.insert(
         std::ranges::find(this->sut, 5), DestinationPosition{1}, source);
+
+    EXPECT_EQ(it, std::ranges::find(this->sut, 20));
+    EXPECT_THAT(
+        this->sut,
+        ElementsAre(1, 2, 10, 3, 4, 5, 6, 20, 21, 22, 23, 24, 25, 7, 8, 9));
+}
+
+TYPED_TEST(GenericTreeFixture, batch_insert_at_optional_position)
+{
+    /*
+     * 1
+     *   2
+     *     10
+     *   3
+     * 4
+     *   5
+     *     6
+     *       20
+     *       21
+     *       22
+     *       23
+     *       24
+     *       25
+     *     7
+     *       8
+     * 9
+     */
+    std::vector<int> source{20, 21, 22, 23, 24, 25};
+    std::optional<DestinationPosition> maybe_pos{1};
+
+    auto it = this->sut.insert(
+        std::ranges::find(this->sut, 5), maybe_pos, source);
 
     EXPECT_EQ(it, std::ranges::find(this->sut, 20));
     EXPECT_THAT(

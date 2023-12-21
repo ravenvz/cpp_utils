@@ -19,14 +19,14 @@
 
 namespace ds {
 
-template <std::default_initializable PayloadT> class Tree {
+template <std::default_initializable T> class Tree {
 private:
     struct Node {
         friend class Tree;
 
         Node() = default;
 
-        Node(PayloadT payload_)
+        Node(T payload_)
             : payload{payload_}
         {
         }
@@ -112,7 +112,7 @@ private:
         Node* parent{nullptr};
         int64_t pos{0};
         std::vector<std::unique_ptr<Node>> children;
-        PayloadT payload{};
+        T payload{};
 
         auto rebuild_position_indexes(int64_t first)
         {
@@ -155,8 +155,8 @@ private:
 
 public:
     template <typename TransformFunc>
-    using TransformResultT = std::remove_cvref_t<
-        std::invoke_result_t<TransformFunc, const PayloadT&>>;
+    using TransformResultT =
+        std::remove_cvref_t<std::invoke_result_t<TransformFunc, const T&>>;
 
     template <typename v_type, typename node_type> class DfsIterator {
     public:
@@ -248,7 +248,7 @@ public:
         }
     };
 
-    using value_type = PayloadT;
+    using value_type = T;
     using iterator = DfsIterator<value_type, Node>;
     using const_iterator = DfsIterator<const value_type, const Node>;
 
@@ -301,7 +301,7 @@ public:
         return *this;
     }
 
-    auto insert(iterator parent, PayloadT payload) -> iterator
+    auto insert(iterator parent, T payload) -> iterator
     {
         auto* true_parent{parent == end() ? root.get() : parent.ptr};
         auto child = std::make_unique<Node>(std::move(payload));
@@ -310,15 +310,23 @@ public:
         return iterator{child_ptr};
     }
 
-    auto insert(iterator parent,
-                PayloadT payload,
-                DestinationPosition insert_pos) -> iterator
+    auto insert(iterator parent, T payload, DestinationPosition insert_pos)
+        -> iterator
     {
         auto* true_parent{parent == end() ? root.get() : parent.ptr};
         auto child = std::make_unique<Node>(std::move(payload));
         auto* child_ptr = child.get();
         true_parent->insert(std::move(child), insert_pos);
         return iterator{child_ptr};
+    }
+
+    auto insert(iterator parent,
+                T payload,
+                const std::optional<DestinationPosition>& insert_pos)
+        -> iterator
+    {
+        return insert_pos ? insert(parent, std::move(payload), *insert_pos)
+                          : insert(parent, std::move(payload));
     }
 
     template <std::ranges::input_range R, class Proj = std::identity>
@@ -332,6 +340,33 @@ public:
                       std::ranges::begin(r),
                       std::ranges::end(r),
                       std::ref(proj));
+    }
+
+    template <std::ranges::input_range R, class Proj = std::identity>
+    auto insert(iterator parent,
+                const std::optional<DestinationPosition>& insert_pos,
+                R&& r,
+                Proj proj = {})
+    {
+        return insert(parent,
+                      insert_pos,
+                      std::ranges::begin(r),
+                      std::ranges::end(r),
+                      std::ref(proj));
+    }
+
+    template <std::input_iterator I,
+              std::sentinel_for<I> S,
+              class Proj = std::identity>
+    auto insert(iterator parent,
+                const std::optional<DestinationPosition>& insert_pos,
+                I first,
+                S last,
+                Proj proj = {}) -> iterator
+    {
+        const auto pos = insert_pos.value_or(
+            DestinationPosition{std::ssize(parent.ptr->children)});
+        return insert(parent, pos, first, last, proj);
     }
 
     template <std::input_iterator I,
@@ -520,13 +555,12 @@ public:
         }
     }
 
-    auto flatten() const -> std::vector<std::optional<PayloadT>>
+    auto flatten() const -> std::vector<std::optional<T>>
     {
         std::queue<const Node*> frontier;
         frontier.push(root.get());
 
-        std::vector<std::optional<PayloadT>> flattened{std::nullopt,
-                                                       std::nullopt};
+        std::vector<std::optional<T>> flattened{std::nullopt, std::nullopt};
 
         while (not frontier.empty()) {
             const auto* current = frontier.front();
