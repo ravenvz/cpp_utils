@@ -182,6 +182,17 @@ public:
         return iterator{child_index, storage};
     }
 
+    auto insert(iterator parent,
+                T payload,
+                const std::optional<DestinationPosition>& insert_pos)
+        -> iterator
+    {
+        if (insert_pos) {
+            return insert(parent, std::move(payload), *insert_pos);
+        }
+        return insert(parent, std::move(payload));
+    }
+
     template <std::ranges::input_range R, class Proj = std::identity>
     auto insert(iterator parent,
                 DestinationPosition insert_pos,
@@ -193,6 +204,33 @@ public:
                       std::ranges::begin(r),
                       std::ranges::end(r),
                       std::ref(proj));
+    }
+
+    template <std::ranges::input_range R, class Proj = std::identity>
+    auto insert(iterator parent,
+                const std::optional<DestinationPosition>& insert_pos,
+                R&& r,
+                Proj proj = {})
+    {
+        return insert(parent,
+                      insert_pos,
+                      std::ranges::begin(r),
+                      std::ranges::end(r),
+                      std::ref(proj));
+    }
+
+    template <std::input_iterator I,
+              std::sentinel_for<I> S,
+              class Proj = std::identity>
+    auto insert(iterator parent,
+                const std::optional<DestinationPosition>& insert_pos,
+                I first,
+                S last,
+                Proj proj = {}) -> iterator
+    {
+        const auto pos = insert_pos.value_or(DestinationPosition{
+            std::ssize(get_node(find_true_index(parent)).children)});
+        return insert(parent, pos, first, last, proj);
     }
 
     template <std::input_iterator I,
