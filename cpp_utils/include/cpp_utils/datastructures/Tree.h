@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <concepts>
 #include <functional>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <queue>
@@ -190,7 +191,7 @@ public:
 
         auto operator*() const -> element_type& { return ptr->payload; }
 
-        auto operator->() -> element_type* { return &ptr; }
+        auto operator->() -> element_type* { return &ptr->payload; }
 
         auto operator++() -> DfsIterator&
         {
