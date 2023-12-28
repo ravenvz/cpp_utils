@@ -59,7 +59,7 @@ public:
                                                   8,
                                                   std::nullopt,
                                                   std::nullopt};
-        auto tree = IntTree(flattened);
+        auto tree = IntTree::from_flattened(flattened);
         return tree;
     }
 
@@ -989,3 +989,9 @@ TYPED_TEST(GenericTreeFixture, insert_subtree_optional_overload)
                 ElementsAre(1, 2, 10, 3, 4, 5, 6, 7, 8, 101, 102, 103, 104, 9));
 }
 
+TYPED_TEST(GenericTreeFixture, copy_constructor)
+{
+    auto copy{this->sut};
+
+    EXPECT_EQ(copy, this->sut);
+}

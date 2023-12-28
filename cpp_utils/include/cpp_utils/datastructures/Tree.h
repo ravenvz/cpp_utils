@@ -256,11 +256,14 @@ public:
     Tree() = default;
 
     Tree(std::ranges::input_range auto&& r)
+        requires(
+            std::same_as<std::ranges::range_reference_t<T>, std::optional<T>>)
         : Tree{std::ranges::begin(r), std::ranges::end(r)}
     {
     }
 
     template <std::input_iterator I, std::sentinel_for<I> S>
+        requires(std::same_as<typename I::value_type, std::optional<T>>)
     Tree(I first, S last)
     {
         std::queue<iterator> frontier;
@@ -290,6 +293,33 @@ public:
     }
 
     Tree(Tree&& other) = default;
+
+    static auto from_flattened(std::ranges::input_range auto&& r) -> Tree
+    {
+        return from_flattened(std::ranges::begin(r), std::ranges::end(r));
+    }
+
+    template <std::input_iterator I, std::sentinel_for<I> S>
+    static auto from_flattened(I first, S last) -> Tree
+    {
+        std::queue<iterator> frontier;
+        Tree tree;
+        frontier.push(tree.begin());
+
+        ++first;
+        ++first;
+
+        for (; not frontier.empty() and first != last; ++first) {
+            auto parent_it = frontier.front();
+            frontier.pop();
+            for (; first->has_value(); ++first) {
+                auto it = tree.insert(parent_it, first->value());
+                frontier.push(it);
+            }
+        }
+
+        return tree;
+    }
 
     auto operator=(Tree&& other) -> Tree& = default;
 
