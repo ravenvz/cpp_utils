@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22)
 
 set(PROJECT cpp_utils)
 
-project(${PROJECT} VERSION 0.1.10)
+project(${PROJECT} VERSION 0.1.12)
 
 # Download CPM
 include(cmake/CpmDownload.cmake)

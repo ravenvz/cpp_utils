@@ -8,11 +8,18 @@ using ::testing::ElementsAre;
 
 using namespace ds;
 
+struct CompoundType {
+    int some_value;
+    std::string id;
+};
+
 template <typename ParamTuple>
 class GenericTreeFixture : public ::testing::Test {
 public:
     using IntTree = typename std::tuple_element_t<0, ParamTuple>;
     using StringTree = typename std::tuple_element_t<1, ParamTuple>;
+    using CompoundTree = typename std::tuple_element_t<2, ParamTuple>;
+
     IntTree sut = this->make_sample_tree();
 
     auto make_sample_tree() -> IntTree
@@ -121,9 +128,11 @@ public:
     }
 };
 
-using MyTypes =
-    ::testing::Types<std::tuple<Tree<int>, Tree<std::string>>,
-                     std::tuple<LinearTree<int>, LinearTree<std::string>>>;
+using MyTypes = ::testing::Types<
+    std::tuple<Tree<int>, Tree<std::string>, Tree<CompoundType>>,
+    std::tuple<LinearTree<int>,
+               LinearTree<std::string>,
+               LinearTree<CompoundType>>>;
 TYPED_TEST_SUITE(GenericTreeFixture, MyTypes);
 
 TYPED_TEST(GenericTreeFixture, dfs_iteration)
@@ -143,6 +152,18 @@ TYPED_TEST(GenericTreeFixture, cbegin_cend_iterators_of_empty_tree)
     typename TestFixture::StringTree tree;
 
     EXPECT_EQ(tree.cbegin(), tree.cend());
+}
+
+TYPED_TEST(GenericTreeFixture, accessing_iterator)
+{
+    typename TestFixture::CompoundTree tree;
+    tree.insert(tree.end(), CompoundType{2, "2"});
+
+    auto it = tree.cbegin();
+
+    EXPECT_EQ((*it).id, it->id);
+    EXPECT_EQ("2", (*it).id);
+    EXPECT_EQ("2", it->id);
 }
 
 TYPED_TEST(GenericTreeFixture, transforming_tree)
@@ -276,8 +297,8 @@ TYPED_TEST(GenericTreeFixture, inserting_at_position)
 TYPED_TEST(GenericTreeFixture, inserting_at_optional_position)
 {
     std::optional<DestinationPosition> maybe_pos{1};
-    auto actual = this->sut.insert(
-        std::ranges::find(this->sut, 5), 77, maybe_pos);
+    auto actual =
+        this->sut.insert(std::ranges::find(this->sut, 5), 77, maybe_pos);
 
     EXPECT_EQ(std::ranges::find(this->sut, 77), actual);
     EXPECT_THAT(this->sut, ElementsAre(1, 2, 10, 3, 4, 5, 6, 77, 7, 8, 9));
@@ -349,8 +370,8 @@ TYPED_TEST(GenericTreeFixture, batch_insert_at_optional_position)
     std::vector<int> source{20, 21, 22, 23, 24, 25};
     std::optional<DestinationPosition> maybe_pos{1};
 
-    auto it = this->sut.insert(
-        std::ranges::find(this->sut, 5), maybe_pos, source);
+    auto it =
+        this->sut.insert(std::ranges::find(this->sut, 5), maybe_pos, source);
 
     EXPECT_EQ(it, std::ranges::find(this->sut, 20));
     EXPECT_THAT(
