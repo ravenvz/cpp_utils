@@ -124,25 +124,39 @@ public:
     using iterator = DfsIterator<value_type, Node>;
     using const_iterator = DfsIterator<const value_type, const Node>;
 
-    LinearTree(std::ranges::input_range auto&& r)
-        : LinearTree(std::ranges::begin(r), std::ranges::end(r))
+    // LinearTree(std::ranges::input_range auto&& r)
+    //     requires(
+    //         std::same_as<std::ranges::range_reference_t<T>,
+    //         std::optional<T>>)
+    //     : LinearTree(std::ranges::begin(r), std::ranges::end(r))
+    // {
+    // }
+
+    static auto from_flattened(std::ranges::input_range auto&& r) -> LinearTree
     {
+        return from_flattened(std::ranges::begin(r), std::ranges::end(r));
     }
 
     template <std::input_iterator I, std::sentinel_for<I> S>
-    LinearTree(I first, S last)
+    static auto from_flattened(I first, S last) -> LinearTree
+    // template <std::input_iterator I, std::sentinel_for<I> S>
+    //     requires(std::same_as<typename I::value_type, std::optional<T>>)
+    // LinearTree(I first, S last)
     {
         std::queue<iterator> frontier;
-        frontier.push(begin());
+        LinearTree tree;
+        frontier.push(tree.begin());
 
         for (auto it = first + 2; not frontier.empty() and it != last; ++it) {
             auto parent_it{frontier.front()};
             frontier.pop();
             for (; it->has_value(); ++it) {
-                auto child = insert(parent_it, std::forward<T>(**it));
+                auto child = tree.insert(parent_it, std::forward<T>(**it));
                 frontier.push(child);
             }
         }
+
+        return tree;
     }
 
     LinearTree() = default;
