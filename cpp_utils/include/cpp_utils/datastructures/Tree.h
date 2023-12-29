@@ -512,6 +512,23 @@ public:
             true_ptr->children, [](const auto& node) { return node->payload; });
     }
 
+    // These are handy if a need arise to write manual tree traversal
+    auto children_iterators(iterator it)
+    {
+        auto* true_ptr = it == end() ? root.get() : it.ptr;
+        return std::views::transform(true_ptr->children, [](auto& node) {
+            return iterator{node.get()};
+        });
+    }
+
+    auto children_iterators(const_iterator it) const
+    {
+        auto* true_ptr = it == end() ? root.get() : it.ptr;
+        return std::views::transform(true_ptr->children, [](auto& node) {
+            return const_iterator{node.get()};
+        });
+    }
+
     auto take_subtree(iterator subtree_root) -> Tree
     {
         auto* parent = subtree_root.ptr->parent;

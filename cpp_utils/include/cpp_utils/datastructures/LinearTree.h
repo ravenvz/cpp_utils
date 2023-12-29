@@ -390,7 +390,7 @@ public:
         return iterator{get_node(it.ptr).parent, storage};
     }
 
-    auto children(const_iterator it)
+    auto children(iterator it)
     {
         const auto index = find_true_index(it);
         return std::views::transform(get_node(index).children,
@@ -406,6 +406,24 @@ public:
                                      [this](const auto& child_id) {
                                          return get_node(child_id).payload;
                                      });
+    }
+
+    auto children_iterators(iterator it)
+    {
+        const auto index = find_true_index(it);
+        return std::views::transform(get_node(index).children,
+                                     [this](const auto& child_id) {
+                                         return iterator{child_id, storage};
+                                     });
+    }
+
+    auto children_iterators(const_iterator it)
+    {
+        const auto index = find_true_index(it);
+        return std::views::transform(
+            get_node(index).children, [this](const auto& child_id) {
+                return const_iterator{child_id, storage};
+            });
     }
 
     auto take_subtree(iterator subtree_root) -> LinearTree
