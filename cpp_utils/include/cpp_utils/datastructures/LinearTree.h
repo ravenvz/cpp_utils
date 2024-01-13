@@ -412,12 +412,12 @@ public:
     {
         const auto index = find_true_index(it);
         return std::views::transform(get_node(index).children,
-                                     [this](const auto& child_id) {
+                                     [this](auto& child_id) {
                                          return iterator{child_id, storage};
                                      });
     }
 
-    auto children_iterators(const_iterator it)
+    auto children_iterators(const_iterator it) const
     {
         const auto index = find_true_index(it);
         return std::views::transform(

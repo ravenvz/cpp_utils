@@ -524,7 +524,7 @@ public:
     auto children_iterators(const_iterator it) const
     {
         auto* true_ptr = it == end() ? root.get() : it.ptr;
-        return std::views::transform(true_ptr->children, [](auto& node) {
+        return std::views::transform(true_ptr->children, [](const auto& node) {
             return const_iterator{node.get()};
         });
     }
