@@ -1008,3 +1008,17 @@ TYPED_TEST(GenericTreeFixture, returns_children_iterators)
 
     EXPECT_EQ(expected, actual);
 }
+
+TYPED_TEST(GenericTreeFixture, const_children_iterators)
+{
+    const auto tree = this->sut;
+
+    std::vector<int> actual;
+    const auto it = std::ranges::find(tree, 5);
+    std::ranges::copy(
+        std::views::reverse(tree.children_iterators(it)) |
+            std::views::transform([](auto iter) { return *iter; }),
+        std::back_inserter(actual));
+
+    EXPECT_THAT(actual, ElementsAre(7, 6));
+}
