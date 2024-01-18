@@ -302,7 +302,8 @@ public:
                         const LinearTree& other,
                         DestinationPosition insert_pos) -> void
     {
-        throw_if_invalid_destination(parent.ptr, insert_pos);
+        const auto node_id = find_true_index(parent);
+        throw_if_invalid_destination(node_id, insert_pos);
 
         std::queue<std::pair<iterator, int64_t>> frontier;
 

@@ -949,6 +949,16 @@ TYPED_TEST(GenericTreeFixture, take_subtree)
     EXPECT_THAT(subtree, ::testing::ElementsAre(3, 10, 11));
 }
 
+TYPED_TEST(GenericTreeFixture, take_and_reinsert_subtree)
+{
+    auto initial = this->sut;
+    auto subtree = this->sut.take_subtree(std::ranges::find(this->sut, 4));
+
+    this->sut.insert_subtree(this->sut.end(), subtree, DestinationPosition{1});
+
+    EXPECT_EQ(initial, this->sut);
+}
+
 TYPED_TEST(GenericTreeFixture, insert_empty_subtree)
 {
     typename TestFixture::IntTree subtree;
@@ -972,6 +982,26 @@ TYPED_TEST(GenericTreeFixture, insert_subtree)
 
     EXPECT_THAT(this->sut,
                 ElementsAre(1, 2, 10, 3, 4, 5, 6, 101, 102, 103, 104, 7, 8, 9));
+}
+
+TYPED_TEST(GenericTreeFixture, insert_subtree_at_root)
+{
+    typename TestFixture::IntTree subtree;
+    auto first = subtree.insert(subtree.end(), 101);
+    auto second = subtree.insert(first, 102);
+    subtree.insert(second, 103);
+    subtree.insert(second, 104);
+
+    std::cout << "Before: " << std::endl;
+    std::cout << this->sut.to_string() << std::endl;
+
+    this->sut.insert_subtree(this->sut.end(), subtree, DestinationPosition{1});
+
+    std::cout << "After: " << std::endl;
+    std::cout << this->sut.to_string() << std::endl;
+
+    EXPECT_THAT(this->sut,
+                ElementsAre(1, 2, 10, 3, 101, 102, 103, 104, 4, 5, 6, 7, 8, 9));
 }
 
 TYPED_TEST(GenericTreeFixture, insert_subtree_optional_overload)
