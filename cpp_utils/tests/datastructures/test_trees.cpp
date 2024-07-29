@@ -21,6 +21,7 @@ public:
     using CompoundTree = typename std::tuple_element_t<2, ParamTuple>;
 
     IntTree sut = this->make_sample_tree();
+    IntTree inbox_tree = this->make_inbox_like_tree();
 
     auto make_sample_tree() -> IntTree
     {
@@ -126,6 +127,31 @@ public:
 
         return tree;
     }
+
+    auto make_inbox_like_tree() -> IntTree
+    {
+        /*
+         * 1
+         *   2
+         *   3
+         *   4
+         *   5
+         *   6
+         *   7
+         *   8
+         */
+        IntTree tree;
+        auto one = tree.insert(tree.end(), 1);
+        tree.insert(one, 2);
+        tree.insert(one, 3);
+        tree.insert(one, 4);
+        tree.insert(one, 5);
+        tree.insert(one, 6);
+        tree.insert(one, 7);
+        tree.insert(one, 8);
+
+        return tree;
+    }
 };
 
 using MyTypes = ::testing::Types<
@@ -134,6 +160,31 @@ using MyTypes = ::testing::Types<
                LinearTree<std::string>,
                LinearTree<CompoundType>>>;
 TYPED_TEST_SUITE(GenericTreeFixture, MyTypes);
+
+TYPED_TEST(GenericTreeFixture, flatten_and_unflatten_inbox_tree)
+{
+    std::vector<std::optional<int>> expected_flattened{std::nullopt,
+                                                       std::nullopt,
+                                                       1,
+                                                       std::nullopt,
+                                                       2,
+                                                       3,
+                                                       4,
+                                                       5,
+                                                       6,
+                                                       7,
+                                                       8,
+                                                       std::nullopt,
+                                                       std::nullopt,
+                                                       std::nullopt,
+                                                       std::nullopt,
+                                                       std::nullopt,
+                                                       std::nullopt,
+                                                       std::nullopt,
+                                                       std::nullopt};
+
+    EXPECT_EQ(expected_flattened, this->inbox_tree.flatten());
+}
 
 TYPED_TEST(GenericTreeFixture, dfs_iteration)
 {
@@ -1051,4 +1102,13 @@ TYPED_TEST(GenericTreeFixture, const_children_iterators)
         std::back_inserter(actual));
 
     EXPECT_THAT(actual, ElementsAre(7, 6));
+}
+
+TYPED_TEST(GenericTreeFixture, returns_leaves)
+{
+    const auto tree = this->sut;
+    std::vector<int> leaves;
+    tree.leaves(std::back_inserter(leaves));
+
+    EXPECT_THAT(leaves, ElementsAre(10, 3, 6, 8, 9));
 }
