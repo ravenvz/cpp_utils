@@ -39,8 +39,8 @@ private:
             rebuild_position_indexes(std::ssize(children) - 1);
         }
 
-        auto insert(std::unique_ptr<Node> child, DestinationPosition insert_pos)
-            -> void
+        auto insert(std::unique_ptr<Node> child,
+                    DestinationPosition insert_pos) -> void
         {
             throw_if_invalid_destination(insert_pos);
             child->parent = this;
@@ -50,8 +50,9 @@ private:
         }
 
         template <typename InputIt>
-        auto insert(DestinationPosition insert_pos, InputIt first, InputIt last)
-            -> void
+        auto insert(DestinationPosition insert_pos,
+                    InputIt first,
+                    InputIt last) -> void
         {
             if (first == last) {
                 return;
@@ -214,14 +215,14 @@ public:
             return tmp;
         }
 
-        friend auto operator==(const DfsIterator& lhs, const DfsIterator& rhs)
-            -> bool
+        friend auto operator==(const DfsIterator& lhs,
+                               const DfsIterator& rhs) -> bool
         {
             return lhs.ptr == rhs.ptr;
         }
 
-        friend auto operator!=(const DfsIterator& lhs, const DfsIterator& rhs)
-            -> bool
+        friend auto operator!=(const DfsIterator& lhs,
+                               const DfsIterator& rhs) -> bool
         {
             return not(lhs.ptr == rhs.ptr);
         }
@@ -341,8 +342,9 @@ public:
         return iterator{child_ptr};
     }
 
-    auto insert(iterator parent, T payload, DestinationPosition insert_pos)
-        -> iterator
+    auto insert(iterator parent,
+                T payload,
+                DestinationPosition insert_pos) -> iterator
     {
         auto* true_parent{parent == end() ? root.get() : parent.ptr};
         auto child = std::make_unique<Node>(std::move(payload));
@@ -351,10 +353,10 @@ public:
         return iterator{child_ptr};
     }
 
-    auto insert(iterator parent,
-                T payload,
-                const std::optional<DestinationPosition>& insert_pos)
-        -> iterator
+    auto
+    insert(iterator parent,
+           T payload,
+           const std::optional<DestinationPosition>& insert_pos) -> iterator
     {
         return insert_pos ? insert(parent, std::move(payload), *insert_pos)
                           : insert(parent, std::move(payload));
@@ -425,10 +427,10 @@ public:
         return iterator{ptr};
     }
 
-    auto insert_subtree(iterator parent,
-                        const Tree& other,
-                        const std::optional<DestinationPosition>& insert_pos)
-        -> void
+    auto
+    insert_subtree(iterator parent,
+                   const Tree& other,
+                   const std::optional<DestinationPosition>& insert_pos) -> void
     {
         insert_subtree(parent,
                        other,
@@ -529,6 +531,15 @@ public:
         });
     }
 
+    template <typename OutputIt> auto leaves(OutputIt out) const -> void
+    {
+        for (auto it = cbegin(); it != cend(); ++it) {
+            if (children(it).empty()) {
+                *out++ = *it;
+            }
+        }
+    }
+
     auto take_subtree(iterator subtree_root) -> Tree
     {
         auto* parent = subtree_root.ptr->parent;
@@ -549,8 +560,8 @@ public:
     }
 
     template <typename Func>
-    auto transform(const_iterator subtree_root, Func func) const
-        -> Tree<TransformResultT<Func>>
+    auto transform(const_iterator subtree_root,
+                   Func func) const -> Tree<TransformResultT<Func>>
     {
         using Y = TransformResultT<Func>;
         Tree<Y> mapped;

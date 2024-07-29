@@ -102,14 +102,14 @@ public:
             return tmp;
         }
 
-        friend auto operator==(const DfsIterator& lhs, const DfsIterator& rhs)
-            -> bool
+        friend auto operator==(const DfsIterator& lhs,
+                               const DfsIterator& rhs) -> bool
         {
             return lhs.ptr == rhs.ptr;
         }
 
-        friend auto operator!=(const DfsIterator& lhs, const DfsIterator& rhs)
-            -> bool
+        friend auto operator!=(const DfsIterator& lhs,
+                               const DfsIterator& rhs) -> bool
         {
             return not(lhs == rhs);
         }
@@ -179,8 +179,9 @@ public:
         return iterator{child_index, storage};
     }
 
-    auto insert(iterator parent, T payload, DestinationPosition insert_pos)
-        -> iterator
+    auto insert(iterator parent,
+                T payload,
+                DestinationPosition insert_pos) -> iterator
     {
         const auto true_parent = find_true_index(parent);
         throw_if_invalid_destination(true_parent, insert_pos);
@@ -196,10 +197,10 @@ public:
         return iterator{child_index, storage};
     }
 
-    auto insert(iterator parent,
-                T payload,
-                const std::optional<DestinationPosition>& insert_pos)
-        -> iterator
+    auto
+    insert(iterator parent,
+           T payload,
+           const std::optional<DestinationPosition>& insert_pos) -> iterator
     {
         if (insert_pos) {
             return insert(parent, std::move(payload), *insert_pos);
@@ -287,10 +288,10 @@ public:
         return iterator{indexes.front(), storage};
     }
 
-    auto insert_subtree(iterator parent,
-                        const LinearTree& other,
-                        const std::optional<DestinationPosition>& insert_pos)
-        -> void
+    auto
+    insert_subtree(iterator parent,
+                   const LinearTree& other,
+                   const std::optional<DestinationPosition>& insert_pos) -> void
     {
         insert_subtree(parent,
                        other,
@@ -411,10 +412,9 @@ public:
     auto children_iterators(iterator it)
     {
         const auto index = find_true_index(it);
-        return std::views::transform(get_node(index).children,
-                                     [this](auto& child_id) {
-                                         return iterator{child_id, storage};
-                                     });
+        return std::views::transform(
+            get_node(index).children,
+            [this](auto& child_id) { return iterator{child_id, storage}; });
     }
 
     auto children_iterators(const_iterator it) const
@@ -424,6 +424,15 @@ public:
             get_node(index).children, [this](const auto& child_id) {
                 return const_iterator{child_id, storage};
             });
+    }
+
+    template <typename OutputIt> auto leaves(OutputIt out) const -> void
+    {
+        for (auto it = cbegin(); it != cend(); ++it) {
+            if (children(it).empty()) {
+                *out++ = *it;
+            }
+        }
     }
 
     auto take_subtree(iterator subtree_root) -> LinearTree
@@ -445,8 +454,8 @@ public:
     }
 
     template <typename Func>
-    auto transform(const_iterator subtree_root, Func func) const
-        -> LinearTree<TransformResultT<Func>>
+    auto transform(const_iterator subtree_root,
+                   Func func) const -> LinearTree<TransformResultT<Func>>
     {
         using Y = TransformResultT<Func>;
         LinearTree<Y> mapped;
