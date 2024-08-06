@@ -534,9 +534,9 @@ public:
     // Return new tree consisting only of leaves of the current tree. Parent of
     // each leaf would be root and leaves would be added in order of iteration
     // of current tree.
-    auto leaves() const -> Tree<T>
+    auto leaves() const -> Tree
     {
-        Tree<T> leaves_tree;
+        Tree leaves_tree;
         for (auto it = cbegin(); it != cend(); ++it) {
             if (children(it).empty()) {
                 leaves_tree.insert(leaves_tree.end(), *it);
@@ -548,15 +548,20 @@ public:
     // Return new tree consisting only of leaves that satisfy given predicate of
     // the current tree. Parent of each leaf would be root and leaves would be
     // added in order of iteration of current tree.
-    auto leaves(std::predicate<T> auto pred) const -> Tree<T>
+    auto leaves(std::predicate<T> auto pred) const -> Tree
     {
-        Tree<T> leaves_tree;
+        Tree leaves_tree;
         for (auto it = cbegin(); it != cend(); ++it) {
             if (children(it).empty() and pred(*it)) {
                 leaves_tree.insert(leaves_tree.end(), *it);
             }
         }
         return leaves_tree;
+    }
+
+    // Returns subtree with subtree_root as root.
+    auto subtree(const_iterator subtree_root) const -> Tree {
+        return transform(subtree_root, std::identity{});
     }
 
     auto take_subtree(iterator subtree_root) -> Tree
@@ -631,6 +636,22 @@ public:
                 frontier.push(child.get());
             });
         }
+    }
+
+    // Returns tree that contains all subtrees with roots satisfying given
+    // predicate. All those subtrees will be children of new tree root.
+    //
+    // Note that if in some subtree there are subtree or node satisfying given
+    // predicate, it will be also added to the result tree (therefore some
+    // values will be duplicated).
+    auto search(std::predicate<T> auto pred) -> Tree<T> {
+        Tree<T> tree;
+        for (auto it = cbegin(); it != cend(); ++it) {
+            if (pred(*it)) {
+                tree.insert_subtree(tree.end(), subtree(it), DestinationPosition{static_cast<int>(tree.children(end()).size())});
+            }
+        }
+        return tree;
     }
 
     auto flatten() const -> std::vector<std::optional<T>>

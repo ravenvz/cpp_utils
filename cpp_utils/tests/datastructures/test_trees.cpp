@@ -1129,3 +1129,60 @@ TYPED_TEST(GenericTreeFixture, returns_leaves_filtered_by_predicate)
 
     EXPECT_EQ(expected, actual);
 }
+
+TYPED_TEST(GenericTreeFixture, returns_subtree) {
+    typename TestFixture::IntTree expected;
+    auto it1 = expected.insert(expected.end(), 5);
+    expected.insert(it1, 6);
+    auto it2 = expected.insert(it1, 7);
+    expected.insert(it2, 8);
+
+    const auto actual = this->sut.subtree(std::ranges::find(this->sut, 5));
+
+    EXPECT_EQ(expected, actual);
+}
+
+TYPED_TEST(GenericTreeFixture, searches_for_roots_satisfying_predicate)
+{
+    /* Initial tree
+     * 1
+     *   2
+     *     10
+     *   3
+     * 4
+     *   5
+     *     6
+     *     7
+     *       8
+     * 9
+     */
+
+    /* Search tree
+     *  2
+     *    10
+     *  10
+     *  4
+     *    5
+     *      6
+     *      7
+     *        8
+     *  6
+     *  8
+     */
+    typename TestFixture::IntTree expected;
+    auto predicate = [](int x) { return x % 2 == 0; };
+    auto it1 = expected.insert(expected.end(), 2);
+    expected.insert(it1, 10);
+    expected.insert(expected.end(), 10);
+    auto it2 = expected.insert(expected.end(), 4);
+    auto it3 = expected.insert(it2, 5);
+    expected.insert(it3, 6);
+    auto it4 = expected.insert(it3, 7);
+    expected.insert(it4, 8);
+    expected.insert(expected.end(), 6);
+    expected.insert(expected.end(), 8);
+
+    const auto actual = this->sut.search(predicate);
+
+    EXPECT_EQ(expected, actual);
+}
