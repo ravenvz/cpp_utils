@@ -303,7 +303,8 @@ public:
                         const LinearTree& other,
                         DestinationPosition insert_pos) -> void
     {
-        throw_if_invalid_destination(parent.ptr, insert_pos);
+        const auto node_id = find_true_index(parent);
+        throw_if_invalid_destination(node_id, insert_pos);
 
         std::queue<std::pair<iterator, int64_t>> frontier;
 
@@ -426,13 +427,32 @@ public:
             });
     }
 
-    template <typename OutputIt> auto leaves(OutputIt out) const -> void
+    // Return new tree consisting only of leaves of the current tree. Parent of
+    // each leaf would be root and leaves would be added in order of iteration
+    // of current tree.
+    auto leaves() const -> LinearTree<T>
     {
+        LinearTree<T> leaves_tree;
         for (auto it = cbegin(); it != cend(); ++it) {
             if (children(it).empty()) {
-                *out++ = *it;
+                leaves_tree.insert(leaves_tree.end(), *it);
             }
         }
+        return leaves_tree;
+    }
+
+    // Return new tree consisting only of leaves that satisfy given predicate of
+    // the current tree. Parent of each leaf would be root and leaves would be
+    // added in order of iteration of current tree.
+    auto leaves(std::predicate<T> auto pred) const -> LinearTree<T>
+    {
+        LinearTree<T> leaves_tree;
+        for (auto it = cbegin(); it != cend(); ++it) {
+            if (children(it).empty() and pred(*it)) {
+                leaves_tree.insert(leaves_tree.end(), *it);
+            }
+        }
+        return leaves_tree;
     }
 
     auto take_subtree(iterator subtree_root) -> LinearTree
