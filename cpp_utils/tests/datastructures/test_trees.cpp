@@ -1106,9 +1106,26 @@ TYPED_TEST(GenericTreeFixture, const_children_iterators)
 
 TYPED_TEST(GenericTreeFixture, returns_leaves)
 {
-    const auto tree = this->sut;
-    std::vector<int> leaves;
-    tree.leaves(std::back_inserter(leaves));
+    typename TestFixture::IntTree expected;
+    expected.insert(expected.end(), 10);
+    expected.insert(expected.end(), 3);
+    expected.insert(expected.end(), 6);
+    expected.insert(expected.end(), 8);
+    expected.insert(expected.end(), 9);
 
-    EXPECT_THAT(leaves, ElementsAre(10, 3, 6, 8, 9));
+    const auto actual = this->sut.leaves();
+
+    EXPECT_EQ(expected, actual);
+}
+
+TYPED_TEST(GenericTreeFixture, returns_leaves_filtered_by_predicate)
+{
+    typename TestFixture::IntTree expected;
+    expected.insert(expected.end(), 10);
+    expected.insert(expected.end(), 8);
+    expected.insert(expected.end(), 9);
+
+    const auto actual = this->sut.leaves([](auto x) { return x > 6; });
+
+    EXPECT_EQ(expected, actual);
 }
