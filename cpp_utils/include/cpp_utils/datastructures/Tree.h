@@ -644,7 +644,7 @@ public:
     // Note that if in some subtree there are subtree or node satisfying given
     // predicate, it will be also added to the result tree (therefore some
     // values will be duplicated).
-    auto search(std::predicate<T> auto pred) -> Tree<T> {
+    auto search(std::predicate<T> auto pred) const -> Tree<T> {
         Tree<T> tree;
         for (auto it = cbegin(); it != cend(); ++it) {
             if (pred(*it)) {
