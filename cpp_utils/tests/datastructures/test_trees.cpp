@@ -217,6 +217,19 @@ TYPED_TEST(GenericTreeFixture, accessing_iterator)
     EXPECT_EQ("2", it->id);
 }
 
+TYPED_TEST(GenericTreeFixture, returns_tree_size)
+{
+    ASSERT_EQ(10, this->sut.size());
+}
+
+TYPED_TEST(GenericTreeFixture, returns_if_tree_empty)
+{
+    typename TestFixture::IntTree tree;
+
+    EXPECT_TRUE(tree.empty());
+    EXPECT_FALSE(this->sut.empty());
+}
+
 TYPED_TEST(GenericTreeFixture, transforming_tree)
 {
     auto mapped_tree = this->sut.transform(
@@ -1118,6 +1131,13 @@ TYPED_TEST(GenericTreeFixture, returns_leaves)
     EXPECT_EQ(expected, actual);
 }
 
+TYPED_TEST(GenericTreeFixture, leaves_of_empty_tree)
+{
+    typename TestFixture::IntTree tree;
+
+    ASSERT_TRUE(tree.leaves().empty());
+}
+
 TYPED_TEST(GenericTreeFixture, returns_leaves_filtered_by_predicate)
 {
     typename TestFixture::IntTree expected;
@@ -1130,7 +1150,8 @@ TYPED_TEST(GenericTreeFixture, returns_leaves_filtered_by_predicate)
     EXPECT_EQ(expected, actual);
 }
 
-TYPED_TEST(GenericTreeFixture, returns_subtree) {
+TYPED_TEST(GenericTreeFixture, returns_subtree)
+{
     typename TestFixture::IntTree expected;
     auto it1 = expected.insert(expected.end(), 5);
     expected.insert(it1, 6);

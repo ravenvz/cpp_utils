@@ -427,6 +427,17 @@ public:
             });
     }
 
+    auto empty() const -> bool { return children(cend()).size() == 0; }
+
+    /* Return number of nodes in the tree in linear time. */
+    auto size() const -> int
+    {
+        return std::ranges::fold_left(
+            cbegin(), cend(), 0, [](auto acc, const auto& /* payload */) {
+                return acc + 1;
+            });
+    }
+
     // Return new tree consisting only of leaves of the current tree. Parent of
     // each leaf would be root and leaves would be added in order of iteration
     // of current tree.
@@ -456,7 +467,8 @@ public:
     }
 
     // Returns subtree with subtree_root as root.
-    auto subtree(const_iterator subtree_root) const -> LinearTree {
+    auto subtree(const_iterator subtree_root) const -> LinearTree
+    {
         return transform(subtree_root, std::identity{});
     }
 
@@ -551,11 +563,15 @@ public:
     // Note that if in some subtree there are subtree or node satisfying given
     // predicate, it will be also added to the result tree (therefore some
     // values will be duplicated).
-    auto search(std::predicate<T> auto pred) const -> LinearTree<T> {
+    auto search(std::predicate<T> auto pred) const -> LinearTree<T>
+    {
         LinearTree tree;
         for (auto it = cbegin(); it != cend(); ++it) {
             if (pred(*it)) {
-                tree.insert_subtree(tree.end(), subtree(it), DestinationPosition{static_cast<int>(tree.children(end()).size())});
+                tree.insert_subtree(tree.end(),
+                                    subtree(it),
+                                    DestinationPosition{static_cast<int>(
+                                        tree.children(end()).size())});
             }
         }
         return tree;
