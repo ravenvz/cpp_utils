@@ -239,6 +239,43 @@ TYPED_TEST(GenericTreeFixture, transforming_tree)
                 ElementsAre("1", "2", "10", "3", "4", "5", "6", "7", "8", "9"));
 }
 
+TYPED_TEST(GenericTreeFixture, transforming_tree_with_projection) {
+    /*
+     * 1 "abc"
+     *   7 "cde"
+     *     2 "efg"
+     * 5 "ghi"
+     *   8 "ijk"
+     */
+
+    /* Transformed
+     *
+     * 1
+     *   49
+     *     4
+     * 25
+     *   64
+     */
+    auto square = [](int x) { return x * x; };
+    auto value_projection = [](const CompoundType& compound) { return compound.some_value; };
+    typename TestFixture::CompoundTree tree;
+    auto it = tree.insert(tree.end(), CompoundType{1, "abc"});
+    auto it2 = tree.insert(it, CompoundType{7, "cde"});
+    tree.insert(it2, CompoundType{2, "efg"});
+    auto it3= tree.insert(tree.end(), CompoundType{5, "ghi"});
+    tree.insert(it3, CompoundType{8, "ijk"});
+    typename TestFixture::IntTree expected;
+    auto e_it = expected.insert(expected.end(), 1);
+    auto e_2 = expected.insert(e_it, 49); 
+    expected.insert(e_2, 4);
+    auto e_3 = expected.insert(expected.end(), 25);
+    expected.insert(e_3, 64);
+
+    auto mapped_tree = tree.transform(tree.cend(), square, value_projection);
+
+    EXPECT_EQ(expected, mapped_tree);
+}
+
 TYPED_TEST(GenericTreeFixture,
            iterator_does_not_in_fact_iterates_over_subtree_only)
 {
@@ -1117,39 +1154,6 @@ TYPED_TEST(GenericTreeFixture, const_children_iterators)
     EXPECT_THAT(actual, ElementsAre(7, 6));
 }
 
-TYPED_TEST(GenericTreeFixture, returns_leaves)
-{
-    typename TestFixture::IntTree expected;
-    expected.insert(expected.end(), 10);
-    expected.insert(expected.end(), 3);
-    expected.insert(expected.end(), 6);
-    expected.insert(expected.end(), 8);
-    expected.insert(expected.end(), 9);
-
-    const auto actual = this->sut.leaves();
-
-    EXPECT_EQ(expected, actual);
-}
-
-TYPED_TEST(GenericTreeFixture, leaves_of_empty_tree)
-{
-    typename TestFixture::IntTree tree;
-
-    ASSERT_TRUE(tree.leaves().empty());
-}
-
-TYPED_TEST(GenericTreeFixture, returns_leaves_filtered_by_predicate)
-{
-    typename TestFixture::IntTree expected;
-    expected.insert(expected.end(), 10);
-    expected.insert(expected.end(), 8);
-    expected.insert(expected.end(), 9);
-
-    const auto actual = this->sut.leaves([](auto x) { return x > 6; });
-
-    EXPECT_EQ(expected, actual);
-}
-
 TYPED_TEST(GenericTreeFixture, returns_subtree)
 {
     typename TestFixture::IntTree expected;
@@ -1163,7 +1167,7 @@ TYPED_TEST(GenericTreeFixture, returns_subtree)
     EXPECT_EQ(expected, actual);
 }
 
-TYPED_TEST(GenericTreeFixture, searches_for_roots_satisfying_predicate)
+TYPED_TEST(GenericTreeFixture, arranges_tree_by_predicate)
 {
     /* Initial tree
      * 1
@@ -1178,7 +1182,7 @@ TYPED_TEST(GenericTreeFixture, searches_for_roots_satisfying_predicate)
      * 9
      */
 
-    /* Search tree
+    /* Rearranged tree
      *  2
      *    10
      *  10
@@ -1203,7 +1207,7 @@ TYPED_TEST(GenericTreeFixture, searches_for_roots_satisfying_predicate)
     expected.insert(expected.end(), 6);
     expected.insert(expected.end(), 8);
 
-    const auto actual = this->sut.search(predicate);
+    const auto actual = this->sut.arrange_by(predicate);
 
     EXPECT_EQ(expected, actual);
 }

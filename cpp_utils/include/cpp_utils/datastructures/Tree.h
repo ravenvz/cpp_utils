@@ -156,9 +156,10 @@ private:
     };
 
 public:
-    template <typename TransformFunc>
-    using TransformResultT =
-        std::remove_cvref_t<std::invoke_result_t<TransformFunc, const T&>>;
+    template <typename TransformFunc, typename Proj>
+    using TransformResultT = std::remove_cvref_t<
+        std::invoke_result_t<TransformFunc,
+                             std::invoke_result_t<Proj, const T&>>>;
 
     template <typename v_type, typename node_type> class DfsIterator {
     public:
@@ -542,34 +543,6 @@ public:
             });
     }
 
-    // Return new tree consisting only of leaves of the current tree. Parent of
-    // each leaf would be root and leaves would be added in order of iteration
-    // of current tree.
-    auto leaves() const -> Tree
-    {
-        Tree leaves_tree;
-        for (auto it = cbegin(); it != cend(); ++it) {
-            if (children(it).empty()) {
-                leaves_tree.insert(leaves_tree.end(), *it);
-            }
-        }
-        return leaves_tree;
-    }
-
-    // Return new tree consisting only of leaves that satisfy given predicate of
-    // the current tree. Parent of each leaf would be root and leaves would be
-    // added in order of iteration of current tree.
-    auto leaves(std::predicate<T> auto pred) const -> Tree
-    {
-        Tree leaves_tree;
-        for (auto it = cbegin(); it != cend(); ++it) {
-            if (children(it).empty() and pred(*it)) {
-                leaves_tree.insert(leaves_tree.end(), *it);
-            }
-        }
-        return leaves_tree;
-    }
-
     // Returns subtree with subtree_root as root.
     auto subtree(const_iterator subtree_root) const -> Tree
     {
@@ -589,30 +562,32 @@ public:
         return it == end() ? 0 : it.ptr->pos;
     }
 
-    template <typename Func>
-    auto transform(Func func) const -> Tree<TransformResultT<Func>>
+    template <typename Func, typename Proj = std::identity>
+    auto transform(Func func,
+                   Proj proj = {}) const -> Tree<TransformResultT<Func, Proj>>
     {
-        return transform(cend(), func);
+        return transform(cend(), func, proj);
     }
 
-    template <typename Func>
+    template <typename Func, typename Proj = std::identity>
     auto transform(const_iterator subtree_root,
-                   Func func) const -> Tree<TransformResultT<Func>>
+                   Func func,
+                   Proj proj = {}) const -> Tree<TransformResultT<Func, Proj>>
     {
-        using Y = TransformResultT<Func>;
+        using Y = TransformResultT<Func, Proj>;
         Tree<Y> mapped;
 
         std::queue<std::pair<const Node*, typename Tree<Y>::iterator>> frontier;
         if (subtree_root == cend()) {
             for (auto& child : root->children) {
                 auto mapped_it =
-                    mapped.insert(mapped.end(), func(child->payload));
+                    mapped.insert(mapped.end(), func(proj(child->payload)));
                 frontier.push({child.get(), mapped_it});
             }
         }
         else {
-            auto mapped_it =
-                mapped.insert(mapped.end(), func(subtree_root.ptr->payload));
+            auto mapped_it = mapped.insert(
+                mapped.end(), func(proj(subtree_root.ptr->payload)));
             frontier.push({subtree_root.ptr, mapped_it});
         }
 
@@ -621,7 +596,7 @@ public:
             frontier.pop();
 
             for (auto& child : current->children) {
-                auto it = mapped.insert(mapped_it, func(child->payload));
+                auto it = mapped.insert(mapped_it, func(proj(child->payload)));
                 frontier.push({child.get(), it});
             }
         }
@@ -656,7 +631,7 @@ public:
     // Note that if in some subtree there are subtree or node satisfying given
     // predicate, it will be also added to the result tree (therefore some
     // values will be duplicated).
-    auto search(std::predicate<T> auto pred) const -> Tree<T>
+    auto arrange_by(std::predicate<T> auto pred) const -> Tree<T>
     {
         Tree<T> tree;
         for (auto it = cbegin(); it != cend(); ++it) {

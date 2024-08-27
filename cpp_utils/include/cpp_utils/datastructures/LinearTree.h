@@ -27,9 +27,10 @@ private:
     };
 
 public:
-    template <typename TransformFunc>
-    using TransformResultT =
-        std::remove_cvref_t<std::invoke_result_t<TransformFunc, const T&>>;
+    template <typename TransformFunc, typename Proj>
+    using TransformResultT = std::remove_cvref_t<
+        std::invoke_result_t<TransformFunc,
+                             std::invoke_result_t<Proj, const T&>>>;
 
     template <class v_type, class n_type> class DfsIterator {
     public:
@@ -438,34 +439,6 @@ public:
             });
     }
 
-    // Return new tree consisting only of leaves of the current tree. Parent of
-    // each leaf would be root and leaves would be added in order of iteration
-    // of current tree.
-    auto leaves() const -> LinearTree
-    {
-        LinearTree leaves_tree;
-        for (auto it = cbegin(); it != cend(); ++it) {
-            if (children(it).empty()) {
-                leaves_tree.insert(leaves_tree.end(), *it);
-            }
-        }
-        return leaves_tree;
-    }
-
-    // Return new tree consisting only of leaves that satisfy given predicate of
-    // the current tree. Parent of each leaf would be root and leaves would be
-    // added in order of iteration of current tree.
-    auto leaves(std::predicate<T> auto pred) const -> LinearTree
-    {
-        LinearTree leaves_tree;
-        for (auto it = cbegin(); it != cend(); ++it) {
-            if (children(it).empty() and pred(*it)) {
-                leaves_tree.insert(leaves_tree.end(), *it);
-            }
-        }
-        return leaves_tree;
-    }
-
     // Returns subtree with subtree_root as root.
     auto subtree(const_iterator subtree_root) const -> LinearTree
     {
@@ -484,17 +457,18 @@ public:
         return it == cend() ? 0 : get_node(it.ptr).pos;
     }
 
-    template <typename Func>
-    auto transform(Func func) const -> LinearTree<TransformResultT<Func>>
+    template <typename Func, typename Proj = std::identity>
+    auto transform(Func func, Proj proj = {}) const
+        -> LinearTree<TransformResultT<Func, Proj>>
     {
-        return transform(cend(), func);
+        return transform(cend(), func, proj);
     }
 
-    template <typename Func>
-    auto transform(const_iterator subtree_root,
-                   Func func) const -> LinearTree<TransformResultT<Func>>
+    template <typename Func, typename Proj = std::identity>
+    auto transform(const_iterator subtree_root, Func func, Proj proj = {}) const
+        -> LinearTree<TransformResultT<Func, Proj>>
     {
-        using Y = TransformResultT<Func>;
+        using Y = TransformResultT<Func, Proj>;
         LinearTree<Y> mapped;
 
         std::queue<std::pair<int64_t, typename LinearTree<Y>::iterator>>
@@ -505,13 +479,13 @@ public:
 
             for (auto child_id : children) {
                 auto it = mapped.insert(mapped.end(),
-                                        func(get_node(child_id).payload));
+                                        func(proj(get_node(child_id).payload)));
                 frontier.push({child_id, it});
             }
         }
         else {
-            auto it = mapped.insert(mapped.end(),
-                                    func(get_node(subtree_root.ptr).payload));
+            auto it = mapped.insert(
+                mapped.end(), func(proj(get_node(subtree_root.ptr).payload)));
             frontier.push({subtree_root.ptr, it});
         }
 
@@ -522,8 +496,8 @@ public:
             const auto& children = get_node(current).children;
 
             for (auto child_id : children) {
-                auto it =
-                    mapped.insert(mapped_it, func(get_node(child_id).payload));
+                auto it = mapped.insert(mapped_it,
+                                        func(proj(get_node(child_id).payload)));
                 frontier.push({child_id, it});
             }
         }
@@ -563,7 +537,7 @@ public:
     // Note that if in some subtree there are subtree or node satisfying given
     // predicate, it will be also added to the result tree (therefore some
     // values will be duplicated).
-    auto search(std::predicate<T> auto pred) const -> LinearTree<T>
+    auto arrange_by(std::predicate<T> auto pred) const -> LinearTree<T>
     {
         LinearTree tree;
         for (auto it = cbegin(); it != cend(); ++it) {
