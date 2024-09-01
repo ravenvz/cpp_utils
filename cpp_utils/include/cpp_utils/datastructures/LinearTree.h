@@ -534,18 +534,18 @@ public:
     }
 
     // Search for value in the subtree. 
-    template <typename Proj = std::identity, typename V>
+    template <typename It, typename Proj = std::identity, typename V>
         requires std::indirect_binary_predicate<std::ranges::equal_to,
-                                                std::projected<iterator, Proj>,
+                                                std::projected<It, Proj>,
                                                 const V*>
-    auto find(iterator subtree_root, const V& value, Proj proj = {}) -> iterator
+    auto find(It subtree_root, const V& value, Proj proj = {}) -> It
     {
         if (subtree_root == end()) {
             // Since we search all tree in this case, we could just fallback to
             // more generic algorithm
             return std::ranges::find(*this, value, proj);
         }
-        std::stack<iterator> frontier;
+        std::stack<It> frontier;
         frontier.push(subtree_root);
 
         while (not frontier.empty()) {
@@ -564,10 +564,10 @@ public:
     }
 
     // Search for value matching predicate in the subtree.
-    template <
+    template <typename It,
         typename Proj = std::identity,
-        std::indirect_unary_predicate<std::projected<iterator, Proj>> Pred>
-    auto find_if(iterator subtree_root, Pred pred, Proj proj = {}) -> iterator
+        std::indirect_unary_predicate<std::projected<It, Proj>> Pred>
+    auto find_if(It subtree_root, Pred pred, Proj proj = {}) -> It
     {
         if (subtree_root == end()) {
             // Since we search all tree in this case, we could just fallback to
@@ -575,7 +575,7 @@ public:
             return std::ranges::find_if(*this, pred, proj);
         }
 
-        std::stack<iterator> frontier;
+        std::stack<It> frontier;
         frontier.push(subtree_root);
 
         while (not frontier.empty()) {
