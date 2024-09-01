@@ -32,18 +32,18 @@ public:
         std::invoke_result_t<TransformFunc,
                              std::invoke_result_t<Proj, const T&>>>;
 
-    template <class v_type, class n_type> class DfsIterator {
+    template <class v_type, class n_type> class PreorderIterator {
     public:
         using iterator_category = std::forward_iterator_tag;
         using difference_type = std::ptrdiff_t;
         using element_type = v_type;
 
-        friend class DfsIterator<const v_type, const n_type>;
+        friend class PreorderIterator<const v_type, const n_type>;
         friend class LinearTree;
 
-        DfsIterator() = default;
+        PreorderIterator() = default;
 
-        explicit DfsIterator(int64_t p_, std::span<n_type> data_ref)
+        explicit PreorderIterator(int64_t p_, std::span<n_type> data_ref)
             : ptr{p_}
             , data{data_ref}
         {
@@ -53,7 +53,8 @@ public:
             requires(!std::is_const_v<other_n_type> &&
                      std::is_const_v<n_type> &&
                      std::is_same_v<std::remove_const_t<n_type>, other_n_type>)
-        DfsIterator(const DfsIterator<other_v_type, other_n_type>& rhs)
+        PreorderIterator(
+            const PreorderIterator<other_v_type, other_n_type>& rhs)
             : ptr{rhs.ptr}
             , prev{rhs.prev}
         {
@@ -69,7 +70,7 @@ public:
             return &data[static_cast<size_t>(ptr)].payload;
         }
 
-        auto operator++() -> DfsIterator&
+        auto operator++() -> PreorderIterator&
         {
             const Node& ptr_node = data[static_cast<size_t>(ptr)];
             const Node& prev_node = data[static_cast<size_t>(prev)];
@@ -96,21 +97,21 @@ public:
             return *this;
         }
 
-        auto operator++(int) -> DfsIterator
+        auto operator++(int) -> PreorderIterator
         {
             auto tmp = *this;
             ++(*this);
             return tmp;
         }
 
-        friend auto operator==(const DfsIterator& lhs,
-                               const DfsIterator& rhs) -> bool
+        friend auto operator==(const PreorderIterator& lhs,
+                               const PreorderIterator& rhs) -> bool
         {
             return lhs.ptr == rhs.ptr;
         }
 
-        friend auto operator!=(const DfsIterator& lhs,
-                               const DfsIterator& rhs) -> bool
+        friend auto operator!=(const PreorderIterator& lhs,
+                               const PreorderIterator& rhs) -> bool
         {
             return not(lhs == rhs);
         }
@@ -122,8 +123,8 @@ public:
     };
 
     using value_type = T;
-    using iterator = DfsIterator<value_type, Node>;
-    using const_iterator = DfsIterator<const value_type, const Node>;
+    using iterator = PreorderIterator<value_type, Node>;
+    using const_iterator = PreorderIterator<const value_type, const Node>;
 
     // LinearTree(std::ranges::input_range auto&& r)
     //     requires(
@@ -505,6 +506,7 @@ public:
         return mapped;
     }
 
+    // Applies function to all nodes in the subtree mutating it.
     template <typename Func> auto map(iterator subtree_root, Func func) -> void
     {
         if (subtree_root == end()) {
@@ -529,6 +531,66 @@ public:
                 [&frontier](auto child) { frontier.push(child); });
 #endif
         }
+    }
+
+    // Search for value in the subtree. 
+    template <typename Proj = std::identity, typename V>
+        requires std::indirect_binary_predicate<std::ranges::equal_to,
+                                                std::projected<iterator, Proj>,
+                                                const V*>
+    auto find(iterator subtree_root, const V& value, Proj proj = {}) -> iterator
+    {
+        if (subtree_root == end()) {
+            // Since we search all tree in this case, we could just fallback to
+            // more generic algorithm
+            return std::ranges::find(*this, value, proj);
+        }
+        std::stack<iterator> frontier;
+        frontier.push(subtree_root);
+
+        while (not frontier.empty()) {
+            auto current = frontier.top();
+            frontier.pop();
+
+            for (auto child : children_iterators(current)) {
+                if (std::invoke(proj, *child) == value) {
+                    return child;
+                }
+                frontier.push(child);
+            }
+        }
+
+        return end();
+    }
+
+    // Search for value matching predicate in the subtree.
+    template <
+        typename Proj = std::identity,
+        std::indirect_unary_predicate<std::projected<iterator, Proj>> Pred>
+    auto find_if(iterator subtree_root, Pred pred, Proj proj = {}) -> iterator
+    {
+        if (subtree_root == end()) {
+            // Since we search all tree in this case, we could just fallback to
+            // more generic algorithm
+            return std::ranges::find_if(*this, pred, proj);
+        }
+
+        std::stack<iterator> frontier;
+        frontier.push(subtree_root);
+
+        while (not frontier.empty()) {
+            auto current = frontier.top();
+            frontier.pop();
+
+            for (auto child : children_iterators(current)) {
+                if (std::invoke(pred, std::invoke(proj, *child))) {
+                    return child;
+                }
+                frontier.push(child);
+            }
+        }
+
+        return end();
     }
 
     // Returns tree that contains all subtrees with roots satisfying given
@@ -616,8 +678,8 @@ public:
 
     friend auto operator==(const LinearTree& lhs, const LinearTree& rhs) -> bool
     {
-        // Obviously DFS alone cannot be used for comparing trees, so we compare
-        // children sizes along with DFS iteration.
+        // Obviously traversal alone cannot be used for comparing trees, so we
+        // compare children sizes along with iteration.
         auto left_it = lhs.cbegin();
         auto right_it = rhs.cbegin();
 
