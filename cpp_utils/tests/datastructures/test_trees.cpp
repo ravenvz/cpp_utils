@@ -1204,7 +1204,7 @@ TYPED_TEST(GenericTreeFixture, arranges_tree_by_predicate)
     expected.insert(expected.end(), 6);
     expected.insert(expected.end(), 8);
 
-    const auto actual = this->sut.arrange_by(predicate);
+    const auto actual = arrange_by(this->sut, predicate);
 
     EXPECT_EQ(expected, actual);
 }
@@ -1228,11 +1228,11 @@ TYPED_TEST(GenericTreeFixture, finds_value_in_subtree)
     tree.insert(it3, 1);
     tree.insert(it1, 2);
     tree.insert(tree.end(), 2);
-    auto actual_it = tree.find(subtree_it, 2);
+    auto actual_it = find(tree, subtree_it, 2);
 
     EXPECT_EQ(2, *actual_it);
     EXPECT_EQ(3, std::distance(tree.begin(), actual_it));
-    EXPECT_EQ(tree.end(), tree.find(subtree_it, 77));
+    EXPECT_EQ(tree.end(), find(tree, subtree_it, 77));
 }
 
 TYPED_TEST(GenericTreeFixture, finds_projected_value_in_subtree)
@@ -1256,11 +1256,43 @@ TYPED_TEST(GenericTreeFixture, finds_projected_value_in_subtree)
     tree.insert(tree.end(), CompoundType{2, "4"});
 
     auto projection = [](const auto& elem) { return elem.some_value; };
-    auto actual_it = tree.find(subtree_it, 2, projection);
+    auto actual_it = find(tree, subtree_it, 2, projection);
 
     EXPECT_EQ(2, actual_it->some_value);
     EXPECT_EQ("2", actual_it->id);
-    EXPECT_EQ(tree.end(), tree.find(subtree_it, 77, projection));
+    EXPECT_EQ(tree.end(), find(tree, subtree_it, 77, projection));
+}
+
+TYPED_TEST(GenericTreeFixture, finds_projected_value_in_subtree_const_overload)
+{
+    /*
+     * 1 "1"
+     *    2 "1"
+     *    3 "1"
+     *       2 "2"
+     *         1 "2"
+     *    2 "3"
+     * 2 "4"
+     */
+    typename TestFixture::CompoundTree tree;
+    auto it1 = tree.insert(tree.end(), CompoundType{1, "1"});
+    tree.insert(it1, CompoundType{2, "1"});
+    auto subtree_it = tree.insert(it1, CompoundType{3, "1"});
+    auto it3 = tree.insert(subtree_it, CompoundType{2, "2"});
+    tree.insert(it3, CompoundType{1, "2"});
+    tree.insert(it1, CompoundType{2, "3"});
+    tree.insert(tree.end(), CompoundType{2, "4"});
+    const auto const_tree = tree;
+
+    auto it = tree.cbegin();
+    ++it;
+    ++it;
+    auto projection = [](const auto& elem) { return elem.some_value; };
+    auto actual_it = find(const_tree, it, 2, projection);
+
+    EXPECT_EQ(2, actual_it->some_value);
+    EXPECT_EQ("2", actual_it->id);
+    EXPECT_EQ(const_tree.cend(), find(const_tree, it, 77, projection));
 }
 
 TYPED_TEST(GenericTreeFixture, finds_value_satisfying_predicate_in_subtree)
@@ -1284,13 +1316,13 @@ TYPED_TEST(GenericTreeFixture, finds_value_satisfying_predicate_in_subtree)
     tree.insert(tree.end(), CompoundType{2, "4"});
 
     auto predicate = [](const auto& elem) { return elem.some_value == 2; };
-    auto actual_it = tree.find_if(subtree_it, predicate);
+    auto actual_it = find_if(tree, subtree_it, predicate);
 
     EXPECT_EQ(2, actual_it->some_value);
     EXPECT_EQ("2", actual_it->id);
-    EXPECT_EQ(tree.end(), tree.find_if(subtree_it, [](const auto& el) {
-        return el.some_value == 77;
-    }));
+    EXPECT_EQ(tree.end(), find_if(tree, subtree_it, [](const auto& el) {
+                  return el.some_value == 77;
+              }));
 }
 
 TYPED_TEST(GenericTreeFixture,
@@ -1316,12 +1348,13 @@ TYPED_TEST(GenericTreeFixture,
 
     auto projection = [](const auto& elem) { return elem.id; };
     auto predicate = [](const auto& str) { return str.size() >= 2; };
-    auto actual_it = tree.find_if(subtree_it, predicate, projection);
+    auto actual_it = find_if(tree, subtree_it, predicate, projection);
 
     EXPECT_EQ(2, actual_it->some_value);
     EXPECT_EQ("222", actual_it->id);
     EXPECT_EQ(tree.end(),
-              tree.find_if(
+              find_if(
+                  tree,
                   subtree_it,
                   [](const auto& str) { return str.size() == 77; },
                   projection));

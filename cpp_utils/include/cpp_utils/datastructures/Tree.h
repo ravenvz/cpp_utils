@@ -580,14 +580,17 @@ public:
         std::queue<std::pair<const Node*, typename Tree<Y>::iterator>> frontier;
         if (subtree_root == cend()) {
             for (auto& child : root->children) {
-                auto mapped_it =
-                    mapped.insert(mapped.end(), func(proj(child->payload)));
+                auto mapped_it = mapped.insert(
+                    mapped.end(),
+                    std::invoke(func, std::invoke(proj, child->payload)));
                 frontier.push({child.get(), mapped_it});
             }
         }
         else {
             auto mapped_it = mapped.insert(
-                mapped.end(), func(proj(subtree_root.ptr->payload)));
+                mapped.end(),
+                std::invoke(func,
+                            std::invoke(proj, subtree_root.ptr->payload)));
             frontier.push({subtree_root.ptr, mapped_it});
         }
 
@@ -596,7 +599,9 @@ public:
             frontier.pop();
 
             for (auto& child : current->children) {
-                auto it = mapped.insert(mapped_it, func(proj(child->payload)));
+                auto it = mapped.insert(
+                    mapped_it,
+                    std::invoke(func, std::invoke(proj, child->payload)));
                 frontier.push({child.get(), it});
             }
         }
@@ -619,91 +624,16 @@ public:
             auto* current = frontier.top();
             frontier.pop();
 
-            func(current->payload);
+            std::invoke(func, current->payload);
+
+#ifdef __cpp_lib_containers_ranges
+            frontier.push_range(current->children);
+#else
             std::ranges::for_each(current->children, [&frontier](auto& child) {
                 frontier.push(child.get());
             });
+#endif
         }
-    }
-
-    // Search for value in the subtree. 
-    template <typename It, typename Proj = std::identity, typename V>
-        requires std::indirect_binary_predicate<std::ranges::equal_to,
-                                                std::projected<It, Proj>,
-                                                const V*>
-    auto find(It subtree_root, const V& value, Proj proj = {}) -> It
-    {
-        if (subtree_root == end()) {
-            // Since we search all tree in this case, we could just fallback to
-            // more generic algorithm
-            return std::ranges::find(*this, value, proj);
-        }
-        std::stack<It> frontier;
-        frontier.push(subtree_root);
-
-        while (not frontier.empty()) {
-            auto current = frontier.top();
-            frontier.pop();
-
-            for (auto child : children_iterators(current)) {
-                if (std::invoke(proj, *child) == value) {
-                    return child;
-                }
-                frontier.push(child);
-            }
-        }
-
-        return end();
-    }
-
-    // Search for value matching predicate in the subtree.
-    template <typename It,
-        typename Proj = std::identity,
-        std::indirect_unary_predicate<std::projected<It, Proj>> Pred>
-    auto find_if(It subtree_root, Pred pred, Proj proj = {}) -> It
-    {
-        if (subtree_root == end()) {
-            // Since we search all tree in this case, we could just fallback to
-            // more generic algorithm
-            return std::ranges::find_if(*this, pred, proj);
-        }
-
-        std::stack<It> frontier;
-        frontier.push(subtree_root);
-
-        while (not frontier.empty()) {
-            auto current = frontier.top();
-            frontier.pop();
-
-            for (auto child : children_iterators(current)) {
-                if (std::invoke(pred, std::invoke(proj, *child))) {
-                    return child;
-                }
-                frontier.push(child);
-            }
-        }
-
-        return end();
-    }
-
-    // Returns tree that contains all subtrees with roots satisfying given
-    // predicate. All those subtrees will be children of new tree root.
-    //
-    // Note that if in some subtree there are subtree or node satisfying given
-    // predicate, it will be also added to the result tree (therefore some
-    // values will be duplicated).
-    auto arrange_by(std::predicate<T> auto pred) const -> Tree<T>
-    {
-        Tree<T> tree;
-        for (auto it = cbegin(); it != cend(); ++it) {
-            if (pred(*it)) {
-                tree.insert_subtree(tree.end(),
-                                    subtree(it),
-                                    DestinationPosition{static_cast<int>(
-                                        tree.children(end()).size())});
-            }
-        }
-        return tree;
     }
 
     auto flatten() const -> std::vector<std::optional<T>>
