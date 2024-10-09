@@ -7,22 +7,22 @@ namespace types {
 
 template <typename T, typename Tag> class ImplicitNamedType {
 public:
-    ImplicitNamedType() = default;
+    constexpr ImplicitNamedType() = default;
 
-    explicit ImplicitNamedType(T&& val_) noexcept(
+    explicit constexpr ImplicitNamedType(T&& val_) noexcept(
         std::is_nothrow_move_constructible_v<T>)
         : val{std::move(val_)}
     {
     }
 
-    explicit ImplicitNamedType(const T& val_)
+    explicit constexpr ImplicitNamedType(const T& val_)
         : val{val_}
     {
     }
 
-    operator const T&() const noexcept { return val; }
+    constexpr operator const T&() const noexcept { return val; }
 
-    operator T&() noexcept { return val; }
+    constexpr operator T&() noexcept { return val; }
 
 private:
     T val;
@@ -30,22 +30,22 @@ private:
 
 template <typename T, typename Tag> class ExplicitNamedType {
 public:
-    ExplicitNamedType() = default;
+    constexpr ExplicitNamedType() = default;
 
-    explicit ExplicitNamedType(T&& val_) noexcept(
+    explicit constexpr ExplicitNamedType(T&& val_) noexcept(
         std::is_nothrow_move_constructible_v<T>)
         : val{std::move(val_)}
     {
     }
 
-    explicit ExplicitNamedType(const T& val_)
+    explicit constexpr ExplicitNamedType(const T& val_)
         : val{val_}
     {
     }
 
-    explicit operator const T&() const noexcept { return val; }
+    explicit constexpr operator const T&() const noexcept { return val; }
 
-    explicit operator T&() noexcept { return val; }
+    explicit constexpr operator T&() noexcept { return val; }
 
 private:
     T val;
