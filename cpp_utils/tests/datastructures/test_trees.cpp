@@ -11,6 +11,9 @@ using namespace ds;
 struct CompoundType {
     int some_value;
     std::string id;
+
+    friend auto operator==(const CompoundType&,
+                           const CompoundType&) -> bool = default;
 };
 
 template <typename ParamTuple>
@@ -1358,4 +1361,42 @@ TYPED_TEST(GenericTreeFixture,
                   subtree_it,
                   [](const auto& str) { return str.size() == 77; },
                   projection));
+}
+
+TYPED_TEST(GenericTreeFixture, returns_filtered_tree)
+{
+    /*
+     * 1 "0"
+     *   2 "1"
+     * 3 "1"
+     *   4 "1"
+     *   5 "0"
+     *     6 "1"
+     *       9 "0"
+     * 7 "1"
+     * 8 "0"
+     */
+    typename TestFixture::CompoundTree tree;
+    auto it1 = tree.insert(tree.end(), CompoundType{1, "0"});
+    tree.insert(it1, CompoundType{2, "1"});
+    auto it2 = tree.insert(tree.end(), CompoundType{3, "1"});
+    tree.insert(it2, CompoundType{4, "1"});
+    auto it3 = tree.insert(it2, CompoundType{5, "0"});
+    auto it4 = tree.insert(it3, CompoundType{6, "1"});
+    tree.insert(it4, CompoundType{9, "0"});
+    tree.insert(tree.end(), CompoundType{7, "1"});
+    tree.insert(tree.end(), CompoundType{8, "0"});
+    /*
+     * 3 "1"
+     *   4 "1"
+     * 7 "1"
+     */
+    typename TestFixture::CompoundTree expected;
+    auto e1 = expected.insert(expected.end(), CompoundType{3, "1"});
+    expected.insert(e1, CompoundType{4, "1"});
+    expected.insert(expected.end(), CompoundType{7, "1"});
+
+    EXPECT_EQ(expected, filter(tree, [](const auto& payload) {
+                  return payload.id == "1";
+              }));
 }

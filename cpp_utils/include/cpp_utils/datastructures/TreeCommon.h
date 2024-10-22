@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <functional>
 #include <iterator>
+#include <queue>
 #include <stack>
 
 namespace details {
@@ -182,6 +183,41 @@ auto arrange_by(
                                    res.children(res.end()).size())});
         }
     }
+    return res;
+}
+
+/* Returns new tree that has only nodes that satisfies predicate, others are
+ * pruned with all children. */
+template <typename TreeType>
+auto filter(const TreeType& tree,
+            std::predicate<typename TreeType::const_iterator::element_type> auto
+                pred) -> TreeType
+{
+    TreeType res;
+    std::queue<std::pair<typename TreeType::const_iterator,
+                         typename TreeType::iterator>>
+        frontier;
+    for (const auto child : tree.children_iterators(tree.end())) {
+        if (not pred(*child)) {
+            continue;
+        }
+        auto res_it = res.insert(res.end(), *child);
+        frontier.push({child, res_it});
+    }
+
+    while (not frontier.empty()) {
+        auto [current, res_it] = frontier.front();
+        frontier.pop();
+
+        for (auto child : tree.children_iterators(current)) {
+            if (not pred(*child)) {
+                continue;
+            }
+            auto it = res.insert(res_it, *child);
+            frontier.push({child, it});
+        }
+    }
+
     return res;
 }
 
