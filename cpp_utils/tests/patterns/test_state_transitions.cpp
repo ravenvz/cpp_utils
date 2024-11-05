@@ -25,7 +25,7 @@ using TState = std::variant<AutoOpened<Context>,
 template <typename Context> using MaybeState = std::optional<TState<Context>>;
 
 template <typename Context> class BaseState {
-public:
+protected:
     explicit BaseState(std::reference_wrapper<Context> context_)
         : context{context_}
     {
@@ -36,11 +36,10 @@ public:
         return MaybeState<Context>{};
     }
 
-protected:
     std::reference_wrapper<Context> context;
 };
 
-template <typename Context> class AutoOpened : public BaseState<Context> {
+template <typename Context> class AutoOpened : BaseState<Context> {
 public:
     using BaseState<Context>::context;
     using BaseState<Context>::process;
@@ -66,7 +65,7 @@ public:
     }
 };
 
-template <typename Context> class AutoClosed : public BaseState<Context> {
+template <typename Context> class AutoClosed : BaseState<Context> {
 public:
     using BaseState<Context>::context;
     using BaseState<Context>::process;
@@ -100,7 +99,7 @@ public:
     }
 };
 
-template <typename Context> class Opened : public BaseState<Context> {
+template <typename Context> class Opened : BaseState<Context> {
 public:
     using BaseState<Context>::context;
     using BaseState<Context>::process;
@@ -126,7 +125,7 @@ public:
     }
 };
 
-template <typename Context> class Closed : public BaseState<Context> {
+template <typename Context> class Closed : BaseState<Context> {
 public:
     using BaseState<Context>::context;
     using BaseState<Context>::process;

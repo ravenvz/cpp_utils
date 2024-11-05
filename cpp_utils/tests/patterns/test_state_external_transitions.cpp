@@ -17,17 +17,16 @@ template <typename Context> class Opened;
 template <typename Context> class Closed;
 
 template <typename Context> class BaseState {
-public:
+protected:
     explicit BaseState(std::reference_wrapper<Context> context_)
         : context{context_}
     {
     }
 
-protected:
     std::reference_wrapper<Context> context;
 };
 
-template <typename Context> class AutoOpened : public BaseState<Context> {
+template <typename Context> class AutoOpened : BaseState<Context> {
 public:
     using BaseState<Context>::context;
 
@@ -42,7 +41,7 @@ public:
     auto get_state() const -> States { return States::AutoOpened; }
 };
 
-template <typename Context> class AutoClosed : public BaseState<Context> {
+template <typename Context> class AutoClosed : BaseState<Context> {
 public:
     using BaseState<Context>::context;
 
@@ -62,7 +61,7 @@ public:
     }
 };
 
-template <typename Context> class Opened : public BaseState<Context> {
+template <typename Context> class Opened : BaseState<Context> {
 public:
     using BaseState<Context>::context;
 
@@ -77,7 +76,7 @@ public:
     auto get_state() const -> States { return States::Opened; }
 };
 
-template <typename Context> class Closed : public BaseState<Context> {
+template <typename Context> class Closed : BaseState<Context> {
 public:
     using BaseState<Context>::context;
 
