@@ -43,11 +43,13 @@ public:
 
         PreorderIterator() = default;
 
-        explicit PreorderIterator(int64_t p_, std::span<n_type> data_ref)
+        PreorderIterator(int64_t p_, std::span<n_type> data_ref)
             : ptr{p_}
             , data{data_ref}
         {
         }
+
+        PreorderIterator(const PreorderIterator&) = default;
 
         template <class other_n_type, class other_v_type>
             requires(!std::is_const_v<other_n_type> &&
@@ -58,6 +60,45 @@ public:
             : ptr{rhs.ptr}
             , prev{rhs.prev}
         {
+        }
+
+        auto operator=(const PreorderIterator&) -> PreorderIterator& = default;
+
+        template <class other_n_type, class other_v_type>
+            requires(!std::is_const_v<other_n_type> &&
+                     std::is_const_v<n_type> &&
+                     std::is_same_v<std::remove_const_t<n_type>, other_n_type>)
+        auto operator=(const PreorderIterator<other_v_type, other_n_type>& rhs)
+            -> PreorderIterator&
+        {
+            ptr = rhs.ptr;
+            prev = rhs.prev;
+            data = rhs.data;
+            return *this;
+        }
+
+        template <class other_n_type, class other_v_type>
+            requires(!std::is_const_v<other_n_type> &&
+                     std::is_const_v<n_type> &&
+                     std::is_same_v<std::remove_const_t<n_type>, other_n_type>)
+        PreorderIterator(PreorderIterator<other_v_type, other_n_type>&& rhs)
+            : ptr{rhs.ptr}
+            , prev{rhs.prev}
+            , data{rhs.data}
+        {
+        }
+
+        template <class other_n_type, class other_v_type>
+            requires(!std::is_const_v<other_n_type> &&
+                     std::is_const_v<n_type> &&
+                     std::is_same_v<std::remove_const_t<n_type>, other_n_type>)
+        auto operator=(PreorderIterator<other_v_type, other_n_type>&& rhs)
+            -> PreorderIterator&
+        {
+            ptr = rhs.ptr;
+            prev = rhs.prev;
+            data = rhs.data;
+            return *this;
         }
 
         auto operator*() const -> element_type&
@@ -73,7 +114,7 @@ public:
         auto operator++() -> PreorderIterator&
         {
             const Node& ptr_node = data[static_cast<size_t>(ptr)];
-            const Node& prev_node = data[static_cast<size_t>(prev)];
+            const Node& prev_node = data[static_cast<size_t>(prev == -1 ? 0 : prev)];
             auto tmp = ptr;
             const bool bottom_reached{
                 ptr_node.children.empty() or

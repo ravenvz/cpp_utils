@@ -320,10 +320,13 @@ TYPED_TEST(GenericTreeFixture, following_parents)
 {
     auto it = std::ranges::find(this->sut, 8);
     it = this->sut.parent(it);
+    EXPECT_TRUE(it != this->sut.end());
     EXPECT_EQ(7, *it);
     it = this->sut.parent(it);
+    EXPECT_TRUE(it != this->sut.end());
     EXPECT_EQ(5, *it);
     it = this->sut.parent(it);
+    EXPECT_TRUE(it != this->sut.end());
     EXPECT_EQ(4, *it);
     it = this->sut.parent(it);
     EXPECT_EQ(this->sut.cend(), it);

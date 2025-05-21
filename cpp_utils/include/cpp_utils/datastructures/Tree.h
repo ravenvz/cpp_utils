@@ -626,13 +626,9 @@ public:
 
             std::invoke(func, current->payload);
 
-#ifdef __cpp_lib_containers_ranges
-            frontier.push_range(current->children);
-#else
             std::ranges::for_each(current->children, [&frontier](auto& child) {
                 frontier.push(child.get());
             });
-#endif
         }
     }
 
