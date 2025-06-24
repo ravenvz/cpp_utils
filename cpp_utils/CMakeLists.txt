@@ -16,6 +16,7 @@ INTERFACE
     "${CMAKE_CURRENT_LIST_DIR}/include/cpp_utils/datastructures/Tree.h"
     "${CMAKE_CURRENT_LIST_DIR}/include/cpp_utils/patterns/Converter.h"
     "${CMAKE_CURRENT_LIST_DIR}/include/cpp_utils/patterns/Mediator.h"
+    "${CMAKE_CURRENT_LIST_DIR}/include/cpp_utils/patterns/Observer.h"
     "${CMAKE_CURRENT_LIST_DIR}/include/cpp_utils/patterns/State.h"
     "${CMAKE_CURRENT_LIST_DIR}/include/cpp_utils/types/NamedType.h"
 )
