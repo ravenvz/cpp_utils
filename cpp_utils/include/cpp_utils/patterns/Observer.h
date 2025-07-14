@@ -11,28 +11,33 @@ namespace patterns {
 
 template <typename F, typename Subject>
 concept ObserverCallback =
-    std::invocable<F, Subject*> &&
-    std::same_as<std::invoke_result_t<F, Subject*>, void>;
+    std::invocable<F, Subject&> &&
+    std::same_as<std::invoke_result_t<F, Subject&>, void>;
 
-/*
- * This observer pattern implementation offers observer connections with
- * callables, therefore relies on type erase, not on virtual functions.
+/* Classic GOF Observer pattern is not that hard to implement. Other variations 
+ * probably have too many specific trade-offs depending on use case to have library implementations.
+ *
+ * This implementation strives to provide generic enough approach leveraging modern language features.
+ *
+ * It doesn't use virtual functions but relies on type erasure.
+ *
+ * Observer can be any callable including regular functions, lambda expressions, function objects,
+ * and member functions, provided they are constructible into the move_only_function's specified signature.
  *
  * Attachment to Subject returns Connection object, that is able to disconnect
  * itself on destruction with RAII, preventing possible dangling
  * observer issues.
  *
- * It handles detachment of observers during notification.
+ * It handles possible detachment of observers during notification (at expense of observer attachment and detachment operations
+ * having O(log n) complexity).
  *
  * Observers are notified in order of registration.
- *
- * Observer attachment and detachment operations are O(log n)
  */
 template <typename T> class Subject {
 public:
     static_assert(std::is_class_v<T>, "Subject type must be a class");
 
-    using Callback = std::move_only_function<void(T*)>;
+    using Callback = std::move_only_function<void(T&)>;
 
     class [[nodiscard]] Connection {
         friend class Subject;
@@ -99,7 +104,7 @@ protected:
             return;
         }
 
-        T* self = static_cast<T*>(this);
+        T& self = static_cast<T&>(*this);
 
         for (auto it = callbacks.begin(); it != callbacks.end();) {
             auto current = it++;

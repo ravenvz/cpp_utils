@@ -61,14 +61,14 @@ public:
         : temperature_display{temperature_display_}
         , humidity_display{humidity_display_}
         , temp_sensor_connection{temp_sensor_->attach(
-              [&](TemperatureSensor* sensor) {
-                  temp = sensor->temperature();
+              [&](TemperatureSensor& sensor) {
+                  temp = sensor.temperature();
                   temperature_display.display(
                       std::format("Temperature: {}", temp.value));
               })}
         , hum_sensor_connection{
-              hum_sensor_->attach([&](HumiditySensor* sensor) {
-                  hum = sensor->humidity();
+              hum_sensor_->attach([&](HumiditySensor& sensor) {
+                  hum = sensor.humidity();
                   humidity_display.display(
                       std::format("Humidity: {}", hum.value));
               })}
@@ -111,11 +111,11 @@ TEST_F(ObserverFixture, subject_notifies_observers)
 TEST_F(ObserverFixture, handles_external_observer_removal_during_notification)
 {
     MockMonitor monitor;
-    auto victim_connection = temp_sensor.attach([&](TemperatureSensor* sensor) {
-        monitor.display(std::format("{}", sensor->temperature().value));
+    auto victim_connection = temp_sensor.attach([&](TemperatureSensor& sensor) {
+        monitor.display(std::format("{}", sensor.temperature().value));
     });
     auto removing_connection =
-        temp_sensor.attach([&](TemperatureSensor* /* sensor */) {
+        temp_sensor.attach([&](TemperatureSensor& /* sensor */) {
             victim_connection.disconnect();
         });
     temp_sensor.on_reading_changed(Temperature{20});
@@ -130,7 +130,7 @@ TEST_F(ObserverFixture, handles_self_disconnecting_connection)
 {
     TemperatureSensor::Connection connection;
     connection = temp_sensor.attach(
-        [&](TemperatureSensor* /* sensor */) { connection.disconnect(); });
+        [&](TemperatureSensor& /* sensor */) { connection.disconnect(); });
 
     ASSERT_TRUE(connection);
 
@@ -143,12 +143,12 @@ TEST_F(ObserverFixture, handles_destruction_of_observer)
 {
     MockMonitor hum_display;
     MockMonitor temp_display;
-    auto temp_connection = temp_sensor.attach([&](TemperatureSensor* sensor) {
-        temp_display.display(std::format("{}", sensor->temperature().value));
+    auto temp_connection = temp_sensor.attach([&](TemperatureSensor& sensor) {
+        temp_display.display(std::format("{}", sensor.temperature().value));
     });
     {
-        auto hum_connection = hum_sensor.attach([&](HumiditySensor* sensor) {
-            hum_display.display(std::format("{}", sensor->humidity().value));
+        auto hum_connection = hum_sensor.attach([&](HumiditySensor& sensor) {
+            hum_display.display(std::format("{}", sensor.humidity().value));
         });
     }
 
