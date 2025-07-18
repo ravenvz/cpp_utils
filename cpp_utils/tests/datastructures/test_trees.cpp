@@ -12,8 +12,8 @@ struct CompoundType {
     int some_value;
     std::string id;
 
-    friend auto operator==(const CompoundType&,
-                           const CompoundType&) -> bool = default;
+    friend auto operator==(const CompoundType&, const CompoundType&)
+        -> bool = default;
 };
 
 template <typename ParamTuple>
@@ -1067,6 +1067,18 @@ TYPED_TEST(GenericTreeFixture, take_and_reinsert_subtree)
     this->sut.insert_subtree(this->sut.end(), subtree, DestinationPosition{1});
 
     EXPECT_EQ(initial, this->sut);
+}
+
+TYPED_TEST(GenericTreeFixture, regression_handles_insert_on_empty_tree)
+{
+    Tree<int> tree;
+    tree.insert(tree.end(), 7);
+    Tree<int> expected = tree;
+    auto subtree = tree.take_subtree(std::ranges::find(tree, 7));
+
+    tree.insert_subtree(tree.end(), subtree, std::nullopt);
+
+    EXPECT_EQ(expected, tree);
 }
 
 TYPED_TEST(GenericTreeFixture, insert_empty_subtree)

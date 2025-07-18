@@ -39,8 +39,8 @@ private:
             rebuild_position_indexes(std::ssize(children) - 1);
         }
 
-        auto insert(std::unique_ptr<Node> child,
-                    DestinationPosition insert_pos) -> void
+        auto insert(std::unique_ptr<Node> child, DestinationPosition insert_pos)
+            -> void
         {
             throw_if_invalid_destination(insert_pos);
             child->parent = this;
@@ -50,9 +50,8 @@ private:
         }
 
         template <typename InputIt>
-        auto insert(DestinationPosition insert_pos,
-                    InputIt first,
-                    InputIt last) -> void
+        auto insert(DestinationPosition insert_pos, InputIt first, InputIt last)
+            -> void
         {
             if (first == last) {
                 return;
@@ -343,9 +342,8 @@ public:
         return iterator{child_ptr};
     }
 
-    auto insert(iterator parent,
-                T payload,
-                DestinationPosition insert_pos) -> iterator
+    auto insert(iterator parent, T payload, DestinationPosition insert_pos)
+        -> iterator
     {
         auto* true_parent{parent == end() ? root.get() : parent.ptr};
         auto child = std::make_unique<Node>(std::move(payload));
@@ -354,10 +352,10 @@ public:
         return iterator{child_ptr};
     }
 
-    auto
-    insert(iterator parent,
-           T payload,
-           const std::optional<DestinationPosition>& insert_pos) -> iterator
+    auto insert(iterator parent,
+                T payload,
+                const std::optional<DestinationPosition>& insert_pos)
+        -> iterator
     {
         return insert_pos ? insert(parent, std::move(payload), *insert_pos)
                           : insert(parent, std::move(payload));
@@ -428,15 +426,14 @@ public:
         return iterator{ptr};
     }
 
-    auto
-    insert_subtree(iterator parent,
-                   const Tree& other,
-                   const std::optional<DestinationPosition>& insert_pos) -> void
+    auto insert_subtree(iterator parent,
+                        const Tree& other,
+                        const std::optional<DestinationPosition>& insert_pos)
+        -> void
     {
-        insert_subtree(parent,
-                       other,
-                       insert_pos.value_or(DestinationPosition{
-                           std::ssize(parent.ptr->children)}));
+        auto destination = insert_pos.value_or(DestinationPosition{
+            parent != end() ? std::ssize(parent.ptr->children) : 0});
+        insert_subtree(parent, other, destination);
     }
 
     auto insert_subtree(iterator parent,
@@ -563,16 +560,15 @@ public:
     }
 
     template <typename Func, typename Proj = std::identity>
-    auto transform(Func func,
-                   Proj proj = {}) const -> Tree<TransformResultT<Func, Proj>>
+    auto transform(Func func, Proj proj = {}) const
+        -> Tree<TransformResultT<Func, Proj>>
     {
         return transform(cend(), func, proj);
     }
 
     template <typename Func, typename Proj = std::identity>
-    auto transform(const_iterator subtree_root,
-                   Func func,
-                   Proj proj = {}) const -> Tree<TransformResultT<Func, Proj>>
+    auto transform(const_iterator subtree_root, Func func, Proj proj = {}) const
+        -> Tree<TransformResultT<Func, Proj>>
     {
         using Y = TransformResultT<Func, Proj>;
         Tree<Y> mapped;
