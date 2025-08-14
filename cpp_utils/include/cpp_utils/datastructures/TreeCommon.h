@@ -31,9 +31,9 @@ using DestinationPosition =
 // Search for value in the subtree.
 template <typename TreeType, typename Proj = std::identity, typename V>
     requires std::indirect_binary_predicate<
-                 std::ranges::equal_to,
-                 std::projected<typename TreeType::iterator, Proj>,
-                 const V*>
+        std::ranges::equal_to,
+        std::projected<typename TreeType::iterator, Proj>,
+        const V*>
 auto find(TreeType& tree,
           typename TreeType::iterator subtree_root,
           const V& value,
@@ -65,9 +65,9 @@ auto find(TreeType& tree,
 // Search for value in the subtree.
 template <typename TreeType, typename Proj = std::identity, typename V>
     requires std::indirect_binary_predicate<
-                 std::ranges::equal_to,
-                 std::projected<typename TreeType::const_iterator, Proj>,
-                 const V*>
+        std::ranges::equal_to,
+        std::projected<typename TreeType::const_iterator, Proj>,
+        const V*>
 auto find(const TreeType& tree,
           typename TreeType::const_iterator subtree_root,
           const V& value,
@@ -187,11 +187,16 @@ auto arrange_by(
 }
 
 /* Returns new tree that has only nodes that satisfies predicate, others are
- * pruned with all children. */
+ * pruned with all children.
+ *
+ * Precidate takes tree payload. For more complex filtering tasks filter_it
+ * function is provided.
+ * */
 template <typename TreeType>
-auto filter(const TreeType& tree,
-            std::predicate<typename TreeType::const_iterator::element_type> auto
-                pred) -> TreeType
+auto filter(
+    const TreeType& tree,
+    std::predicate<typename TreeType::const_iterator::element_type> auto pred)
+    -> TreeType
 {
     TreeType res;
     std::queue<std::pair<typename TreeType::const_iterator,
@@ -211,6 +216,46 @@ auto filter(const TreeType& tree,
 
         for (auto child : tree.children_iterators(current)) {
             if (not pred(*child)) {
+                continue;
+            }
+            auto it = res.insert(res_it, *child);
+            frontier.push({child, it});
+        }
+    }
+
+    return res;
+}
+
+/* Returns new tree that has only nodes that satisfies predicate, others are
+ * pruned with all children.
+ *
+ * Predicate task const_iterator instead of tree payload. Might be useful for
+ * more complex filtering tasks that are using information only iterator can
+ * provide, i.e. information about children.
+ * */
+template <typename TreeType>
+auto filter_it(const TreeType& tree,
+               std::predicate<typename TreeType::const_iterator> auto pred)
+    -> TreeType
+{
+    TreeType res;
+    std::queue<std::pair<typename TreeType::const_iterator,
+                         typename TreeType::iterator>>
+        frontier;
+    for (const auto child : tree.children_iterators(tree.end())) {
+        if (not pred(child)) {
+            continue;
+        }
+        auto res_it = res.insert(res.end(), *child);
+        frontier.push({child, res_it});
+    }
+
+    while (not frontier.empty()) {
+        auto [current, res_it] = frontier.front();
+        frontier.pop();
+
+        for (auto child : tree.children_iterators(current)) {
+            if (not pred(child)) {
                 continue;
             }
             auto it = res.insert(res_it, *child);
