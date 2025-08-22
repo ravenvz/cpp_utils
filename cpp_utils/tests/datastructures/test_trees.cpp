@@ -25,6 +25,7 @@ public:
 
     IntTree sut = this->make_sample_tree();
     IntTree inbox_tree = this->make_inbox_like_tree();
+    CompoundTree compound_tree = this->make_compound_tree();
 
     auto make_sample_tree() -> IntTree
     {
@@ -153,6 +154,33 @@ public:
         tree.insert(one, 7);
         tree.insert(one, 8);
 
+        return tree;
+    }
+
+    auto make_compound_tree() -> CompoundTree
+    {
+
+        /*
+         * 1 "0"
+         *   2 "1"
+         * 3 "1"
+         *   4 "1"
+         *   5 "0"
+         *     6 "1"
+         *       9 "0"
+         * 7 "1"
+         * 8 "0"
+         */
+        CompoundTree tree;
+        auto it1 = tree.insert(tree.end(), CompoundType{1, "0"});
+        tree.insert(it1, CompoundType{2, "1"});
+        auto it2 = tree.insert(tree.end(), CompoundType{3, "1"});
+        tree.insert(it2, CompoundType{4, "1"});
+        auto it3 = tree.insert(it2, CompoundType{5, "0"});
+        auto it4 = tree.insert(it3, CompoundType{6, "1"});
+        tree.insert(it4, CompoundType{9, "0"});
+        tree.insert(tree.end(), CompoundType{7, "1"});
+        tree.insert(tree.end(), CompoundType{8, "0"});
         return tree;
     }
 };
@@ -305,6 +333,54 @@ TYPED_TEST(GenericTreeFixture, map_root)
     this->sut.map(this->sut.end(), [](auto& val) { val *= val; });
 
     EXPECT_THAT(this->sut, ElementsAre(1, 4, 100, 9, 16, 25, 36, 49, 64, 81));
+}
+
+TYPED_TEST(GenericTreeFixture, for_each_mutating_overload)
+{
+    auto it = std::ranges::find(this->sut, 5);
+    for_each(this->sut, it, [](int& val) { val *= val; });
+
+    EXPECT_THAT(this->sut, ElementsAre(1, 2, 10, 3, 4, 25, 36, 49, 64, 9));
+}
+
+TYPED_TEST(GenericTreeFixture, for_each_const_overload)
+{
+    std::vector<int> res;
+    const auto tree = this->sut;          // Create const copy
+    auto it = std::ranges::find(tree, 5); // This returns const_iterator
+    for_each(tree, it, [&](const int& val) { res.push_back(val * val); });
+
+    EXPECT_THAT(res, ElementsAre(25, 36, 49, 64));
+}
+
+TYPED_TEST(GenericTreeFixture, for_each_mutating_overload_with_projection)
+{
+    std::vector<std::string> res;
+    auto subtree =
+        std::ranges::find(this->compound_tree, 3, &CompoundType::some_value);
+
+    for_each(
+        this->compound_tree,
+        subtree,
+        [&](const auto& val) { res.push_back(val); },
+        &CompoundType::id);
+
+    EXPECT_THAT(res, ElementsAre("1", "1", "0", "1", "0"));
+}
+
+TYPED_TEST(GenericTreeFixture, for_each_const_overload_with_projection)
+{
+    std::vector<std::string> res;
+    const auto tree = this->compound_tree;
+    auto subtree = std::ranges::find(tree, 3, &CompoundType::some_value);
+
+    for_each(
+        tree,
+        subtree,
+        [&](const auto& val) { res.push_back(val); },
+        &CompoundType::id);
+
+    EXPECT_THAT(res, ElementsAre("1", "1", "0", "1", "0"));
 }
 
 TYPED_TEST(GenericTreeFixture, returns_node_position_in_children)
@@ -1251,6 +1327,38 @@ TYPED_TEST(GenericTreeFixture, finds_value_in_subtree)
     EXPECT_EQ(2, *actual_it);
     EXPECT_EQ(3, std::distance(tree.begin(), actual_it));
     EXPECT_EQ(tree.end(), find(tree, subtree_it, 77));
+
+    // Verify mutating expression compiles
+    *actual_it = 77;
+}
+
+TYPED_TEST(GenericTreeFixture, finds_value_in_subtree_const_overload)
+{
+    /*
+     *  1
+     *    2
+     *    3
+     *      2
+     *        1
+     *    2
+     *  2
+     */
+    typename TestFixture::IntTree tree;
+    auto it1 = tree.insert(tree.end(), 1);
+    tree.insert(it1, 2);
+    auto subtree_it = tree.insert(it1, 3);
+    auto it3 = tree.insert(subtree_it, 2);
+    tree.insert(it3, 1);
+    tree.insert(it1, 2);
+    tree.insert(tree.end(), 2);
+    const auto const_tree = tree;
+    const auto const_subtree_it = std::ranges::find(const_tree, 3);
+
+    auto actual_it = find(const_tree, const_subtree_it, 2);
+
+    EXPECT_EQ(2, *actual_it);
+    EXPECT_EQ(3, std::distance(const_tree.cbegin(), actual_it));
+    EXPECT_EQ(const_tree.cend(), find(const_tree, const_subtree_it, 77));
 }
 
 TYPED_TEST(GenericTreeFixture, finds_projected_value_in_subtree)
@@ -1279,6 +1387,9 @@ TYPED_TEST(GenericTreeFixture, finds_projected_value_in_subtree)
     EXPECT_EQ(2, actual_it->some_value);
     EXPECT_EQ("2", actual_it->id);
     EXPECT_EQ(tree.end(), find(tree, subtree_it, 77, projection));
+
+    // Verify mutating expression compiles
+    actual_it->some_value = 123;
 }
 
 TYPED_TEST(GenericTreeFixture, finds_projected_value_in_subtree_const_overload)
@@ -1321,7 +1432,7 @@ TYPED_TEST(GenericTreeFixture, finds_value_satisfying_predicate_in_subtree)
      *    3 "1"
      *       2 "2"
      *         1 "2"
-     *    2 "3"
+     l*    2 "3"
      * 2 "4"
      */
     typename TestFixture::CompoundTree tree;
@@ -1341,6 +1452,9 @@ TYPED_TEST(GenericTreeFixture, finds_value_satisfying_predicate_in_subtree)
     EXPECT_EQ(tree.end(), find_if(tree, subtree_it, [](const auto& el) {
                   return el.some_value == 77;
               }));
+
+    // Verify mutating expression compiles
+    actual_it->some_value = 123;
 }
 
 TYPED_TEST(GenericTreeFixture,
@@ -1376,11 +1490,55 @@ TYPED_TEST(GenericTreeFixture,
                   subtree_it,
                   [](const auto& str) { return str.size() == 77; },
                   projection));
+
+    // Verify mutating expression compiles
+    actual_it->some_value = 123;
+}
+
+TYPED_TEST(GenericTreeFixture,
+           finds_projected_value_satisfying_predicate_in_subtree_const_overload)
+{
+    /*
+     * 1 "1"
+     *    2 "1"
+     *    3 "1"
+     *       2 "222"
+     *         1 "2"
+     *    2 "3"
+     * 2 "4"
+     */
+    typename TestFixture::CompoundTree tree;
+    auto it1 = tree.insert(tree.end(), CompoundType{1, "1"});
+    tree.insert(it1, CompoundType{2, "1"});
+    auto subtree_it = tree.insert(it1, CompoundType{3, "1"});
+    auto it3 = tree.insert(subtree_it, CompoundType{2, "222"});
+    tree.insert(it3, CompoundType{1, "2"});
+    tree.insert(it1, CompoundType{2, "3"});
+    tree.insert(tree.end(), CompoundType{2, "4"});
+    const auto const_tree = tree;
+    auto const_subtree_it = const_tree.cbegin();
+    ++const_subtree_it;
+    ++const_subtree_it;
+
+    auto projection = [](const auto& elem) { return elem.id; };
+    auto predicate = [](const auto& str) { return str.size() >= 2; };
+    auto actual_it =
+        find_if(const_tree, const_subtree_it, predicate, projection);
+
+    EXPECT_EQ(2, actual_it->some_value);
+    EXPECT_EQ("222", actual_it->id);
+    EXPECT_EQ(tree.end(),
+              find_if(
+                  const_tree,
+                  const_subtree_it,
+                  [](const auto& str) { return str.size() == 77; },
+                  projection));
 }
 
 TYPED_TEST(GenericTreeFixture, returns_filtered_tree)
 {
-    /*
+    /* Original
+     *
      * 1 "0"
      *   2 "1"
      * 3 "1"
@@ -1391,17 +1549,9 @@ TYPED_TEST(GenericTreeFixture, returns_filtered_tree)
      * 7 "1"
      * 8 "0"
      */
-    typename TestFixture::CompoundTree tree;
-    auto it1 = tree.insert(tree.end(), CompoundType{1, "0"});
-    tree.insert(it1, CompoundType{2, "1"});
-    auto it2 = tree.insert(tree.end(), CompoundType{3, "1"});
-    tree.insert(it2, CompoundType{4, "1"});
-    auto it3 = tree.insert(it2, CompoundType{5, "0"});
-    auto it4 = tree.insert(it3, CompoundType{6, "1"});
-    tree.insert(it4, CompoundType{9, "0"});
-    tree.insert(tree.end(), CompoundType{7, "1"});
-    tree.insert(tree.end(), CompoundType{8, "0"});
-    /*
+
+    /* Expected
+     *
      * 3 "1"
      *   4 "1"
      * 7 "1"
@@ -1411,14 +1561,15 @@ TYPED_TEST(GenericTreeFixture, returns_filtered_tree)
     expected.insert(e1, CompoundType{4, "1"});
     expected.insert(expected.end(), CompoundType{7, "1"});
 
-    EXPECT_EQ(expected, filter(tree, [](const auto& payload) {
+    EXPECT_EQ(expected, filter(this->compound_tree, [](const auto& payload) {
                   return payload.id == "1";
               }));
 }
 
 TYPED_TEST(GenericTreeFixture, returns_filtered_tree_with_iterator_predicate)
 {
-    /*
+    /* original
+     *
      * 1 "0"
      *   2 "1"
      * 3 "1"
@@ -1429,17 +1580,10 @@ TYPED_TEST(GenericTreeFixture, returns_filtered_tree_with_iterator_predicate)
      * 7 "1"
      * 8 "0"
      */
-    typename TestFixture::CompoundTree tree;
-    auto it1 = tree.insert(tree.end(), CompoundType{1, "0"});
-    tree.insert(it1, CompoundType{2, "1"});
-    auto it2 = tree.insert(tree.end(), CompoundType{3, "1"});
-    tree.insert(it2, CompoundType{4, "1"});
-    auto it3 = tree.insert(it2, CompoundType{5, "0"});
-    auto it4 = tree.insert(it3, CompoundType{6, "1"});
-    tree.insert(it4, CompoundType{9, "0"});
-    tree.insert(tree.end(), CompoundType{7, "1"});
-    tree.insert(tree.end(), CompoundType{8, "0"});
+
     /*
+     * expected
+     *
      * 3 "1"
      *   4 "1"
      * 7 "1"
@@ -1449,7 +1593,7 @@ TYPED_TEST(GenericTreeFixture, returns_filtered_tree_with_iterator_predicate)
     expected.insert(e1, CompoundType{4, "1"});
     expected.insert(expected.end(), CompoundType{7, "1"});
 
-    EXPECT_EQ(expected, filter_it(tree, [](auto it) {
+    EXPECT_EQ(expected, filter_it(this->compound_tree, [](auto it) {
                   return it->id == "1";
               }));
 }
