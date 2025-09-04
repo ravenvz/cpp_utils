@@ -320,21 +320,6 @@ TYPED_TEST(GenericTreeFixture,
     EXPECT_THAT(actual, ElementsAre(77, 3, 4, 5, 6, 7, 8, 9));
 }
 
-TYPED_TEST(GenericTreeFixture, map_subtree)
-{
-    this->sut.map(std::ranges::find(this->sut, 5),
-                  [](auto& val) { val *= val; });
-
-    EXPECT_THAT(this->sut, ElementsAre(1, 2, 10, 3, 4, 25, 36, 49, 64, 9));
-}
-
-TYPED_TEST(GenericTreeFixture, map_root)
-{
-    this->sut.map(this->sut.end(), [](auto& val) { val *= val; });
-
-    EXPECT_THAT(this->sut, ElementsAre(1, 4, 100, 9, 16, 25, 36, 49, 64, 81));
-}
-
 TYPED_TEST(GenericTreeFixture, for_each_mutating_overload)
 {
     auto it = std::ranges::find(this->sut, 5);
@@ -381,6 +366,86 @@ TYPED_TEST(GenericTreeFixture, for_each_const_overload_with_projection)
         &CompoundType::id);
 
     EXPECT_THAT(res, ElementsAre("1", "1", "0", "1", "0"));
+}
+
+TYPED_TEST(GenericTreeFixture, for_each_it_basic_functionality)
+{
+    std::vector<int> values;
+    std::vector<int64_t> positions;
+
+    auto fn = [&](auto it) {
+        values.push_back(*it);
+        positions.push_back(this->sut.position_in_children(it));
+    };
+
+    for_each_it(this->sut, std::ranges::find(this->sut, 5), fn);
+
+    EXPECT_THAT(values, ElementsAre(5, 6, 7, 8));
+    // Positions: 5 is at position 0 in its parent's children, 6 at 0, 7 at 1, 8
+    // at 0
+    EXPECT_THAT(positions, ElementsAre(0, 0, 1, 0));
+}
+
+TYPED_TEST(GenericTreeFixture, for_each_it_whole_tree)
+{
+    std::vector<int> values;
+
+    auto fn = [&](auto it) { values.push_back(*it); };
+
+    for_each_it(this->sut, this->sut.cend(), fn);
+
+    EXPECT_THAT(values, ElementsAre(1, 2, 10, 3, 4, 5, 6, 7, 8, 9));
+}
+
+TYPED_TEST(GenericTreeFixture, for_each_it_compound_type)
+{
+    std::vector<std::string> ids;
+
+    auto fn = [&](auto it) { ids.push_back(it->id); };
+
+    for_each_it(this->compound_tree, this->compound_tree.cend(), fn);
+
+    EXPECT_THAT(ids, ElementsAre("0", "1", "1", "1", "0", "1", "0", "1", "0"));
+}
+
+TYPED_TEST(GenericTreeFixture, for_each_it_accessing_children_through_iterator)
+{
+    std::vector<int> child_counts;
+
+    auto fn = [&](auto it) {
+        // Count the number of children this node has
+        auto children_range = this->sut.children_iterators(it);
+        child_counts.push_back(static_cast<int>(
+            std::distance(children_range.begin(), children_range.end())));
+    };
+
+    for_each_it(this->sut, this->sut.cend(), fn);
+
+    // Root has 3 children (1, 4, 9)
+    // 1 has 2 children (2, 3)
+    // 2 has 1 child (10)
+    // 3 has 0 children
+    // 4 has 1 child (5)
+    // 5 has 2 children (6, 7)
+    // 6 has 0 children
+    // 7 has 1 child (8)
+    // 8 has 0 children
+    // 9 has 0 children
+    //
+    // and iteration order is 1, 2, 10, 3, 4, 5, 6, 7, 8, 9
+    EXPECT_THAT(child_counts, ElementsAre(2, 1, 0, 0, 1, 2, 0, 1, 0, 0));
+}
+
+TYPED_TEST(GenericTreeFixture, for_each_it_empty_tree)
+{
+    typename TestFixture::IntTree empty_tree;
+    std::vector<int> values;
+
+    auto fn = [&](auto it) { values.push_back(*it); };
+
+    for_each_it(empty_tree, empty_tree.cend(), fn);
+
+    EXPECT_TRUE(values.empty());
 }
 
 TYPED_TEST(GenericTreeFixture, returns_node_position_in_children)

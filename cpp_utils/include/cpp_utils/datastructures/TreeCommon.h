@@ -125,6 +125,41 @@ auto for_each(const TreeType& tree,
     }
 }
 
+// There is no mutable overload for this function as it is not a good idea to
+// expose possibility to use tree iteratora operation while iterating the tree.
+template <typename TreeType, typename Fun>
+auto for_each_it(const TreeType& tree,
+                 typename TreeType::const_iterator subtree_root,
+                 Fun fn) -> void
+{
+    if (subtree_root == tree.cend()) {
+        // std::ranges::for_each(tree, fn, proj);
+        // return;
+        for (auto it = tree.cbegin(); it != tree.cend(); ++it) {
+            std::invoke(fn, it);
+        }
+        return;
+    }
+
+    std::stack<typename TreeType::const_iterator> frontier;
+    frontier.push(subtree_root);
+
+    while (not frontier.empty()) {
+        auto current = frontier.top();
+        frontier.pop();
+
+        std::invoke(fn, current);
+
+#ifdef __cpp_lib_containers_ranges
+        frontier.push_range(tree.children_iterators(current) |
+                            std::views::reverse);
+#else
+        std::ranges::for_each(
+            tree.children_iterators(current) | std::views::reverse,
+            [&frontier](auto child) { frontier.push(child); });
+#endif
+    }
+}
 // Search for value in the subtree.
 template <typename TreeType, typename Proj = std::identity, typename V>
     requires std::indirect_binary_predicate<
@@ -292,7 +327,7 @@ auto arrange_by(
 template <typename TreeType>
 auto filter(
     const TreeType& tree,
-    std::predicate<typename TreeType::const_iterator::element_type> auto pred)
+    std::indirect_unary_predicate<typename TreeType::const_iterator> auto pred)
     -> TreeType
 {
     TreeType res;

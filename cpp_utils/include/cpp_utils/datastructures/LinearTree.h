@@ -114,7 +114,8 @@ public:
         auto operator++() -> PreorderIterator&
         {
             const Node& ptr_node = data[static_cast<size_t>(ptr)];
-            const Node& prev_node = data[static_cast<size_t>(prev == -1 ? 0 : prev)];
+            const Node& prev_node =
+                data[static_cast<size_t>(prev == -1 ? 0 : prev)];
             auto tmp = ptr;
             const bool bottom_reached{
                 ptr_node.children.empty() or
@@ -222,9 +223,8 @@ public:
         return iterator{child_index, storage};
     }
 
-    auto insert(iterator parent,
-                T payload,
-                DestinationPosition insert_pos) -> iterator
+    auto insert(iterator parent, T payload, DestinationPosition insert_pos)
+        -> iterator
     {
         const auto true_parent = find_true_index(parent);
         throw_if_invalid_destination(true_parent, insert_pos);
@@ -240,10 +240,10 @@ public:
         return iterator{child_index, storage};
     }
 
-    auto
-    insert(iterator parent,
-           T payload,
-           const std::optional<DestinationPosition>& insert_pos) -> iterator
+    auto insert(iterator parent,
+                T payload,
+                const std::optional<DestinationPosition>& insert_pos)
+        -> iterator
     {
         if (insert_pos) {
             return insert(parent, std::move(payload), *insert_pos);
@@ -331,10 +331,10 @@ public:
         return iterator{indexes.front(), storage};
     }
 
-    auto
-    insert_subtree(iterator parent,
-                   const LinearTree& other,
-                   const std::optional<DestinationPosition>& insert_pos) -> void
+    auto insert_subtree(iterator parent,
+                        const LinearTree& other,
+                        const std::optional<DestinationPosition>& insert_pos)
+        -> void
     {
         insert_subtree(parent,
                        other,
@@ -552,33 +552,6 @@ public:
         }
 
         return mapped;
-    }
-
-    // Applies function to all nodes in the subtree mutating it.
-    template <typename Func> auto map(iterator subtree_root, Func func) -> void
-    {
-        if (subtree_root == end()) {
-            std::for_each(begin(), end(), func);
-            return;
-        }
-
-        std::stack<int64_t> frontier;
-        frontier.push(subtree_root.ptr);
-
-        while (not frontier.empty()) {
-            const auto current = frontier.top();
-            frontier.pop();
-
-            std::invoke(func, get_node(current).payload);
-
-#ifdef __cpp_lib_containers_ranges
-            frontier.push_range(get_node(current).children);
-#else
-            std::ranges::for_each(
-                get_node(current).children,
-                [&frontier](auto child) { frontier.push(child); });
-#endif
-        }
     }
 
     auto flatten() const -> std::vector<std::optional<T>>

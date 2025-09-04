@@ -605,29 +605,6 @@ public:
         return mapped;
     }
 
-    // Applies function to all nodes in the subtree mutating it.
-    template <typename Func> auto map(iterator subtree_root, Func func) -> void
-    {
-        if (subtree_root == end()) {
-            std::for_each(begin(), end(), func);
-            return;
-        }
-
-        std::stack<Node*> frontier;
-        frontier.push(subtree_root.ptr);
-
-        while (not frontier.empty()) {
-            auto* current = frontier.top();
-            frontier.pop();
-
-            std::invoke(func, current->payload);
-
-            std::ranges::for_each(current->children, [&frontier](auto& child) {
-                frontier.push(child.get());
-            });
-        }
-    }
-
     auto flatten() const -> std::vector<std::optional<T>>
     {
         std::queue<const Node*> frontier;
