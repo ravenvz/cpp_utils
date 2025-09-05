@@ -1,6 +1,7 @@
 #include "cpp_utils/datastructures/LinearTree.h"
 #include "cpp_utils/datastructures/Tree.h"
 #include "gmock/gmock.h"
+#include <numeric>
 #include <ranges>
 #include <tuple>
 
@@ -318,6 +319,103 @@ TYPED_TEST(GenericTreeFixture,
     std::copy(it, this->sut.end(), std::back_inserter(actual));
 
     EXPECT_THAT(actual, ElementsAre(77, 3, 4, 5, 6, 7, 8, 9));
+}
+
+TYPED_TEST(GenericTreeFixture, subtree_view_whole_tree)
+{
+    auto range = subtree_view(this->sut, this->sut.end());
+
+    std::vector<int> values(range.begin(), range.end());
+    EXPECT_THAT(values, ElementsAre(1, 2, 10, 3, 4, 5, 6, 7, 8, 9));
+}
+
+TYPED_TEST(GenericTreeFixture, subtree_view_subtree)
+{
+    auto subtree_root = std::ranges::find(this->sut, 5);
+    auto range = subtree_view(this->sut, subtree_root);
+
+    std::vector<int> values(range.begin(), range.end());
+    EXPECT_THAT(values, ElementsAre(5, 6, 7, 8));
+}
+
+TYPED_TEST(GenericTreeFixture, subtree_view_with_stl_algorithms)
+{
+    auto subtree_root = std::ranges::find(this->sut, 5);
+    auto range = subtree_view(this->sut, subtree_root);
+
+    // Use STL algorithms directly on the subtree
+    int sum = std::accumulate(range.begin(), range.end(), 0);
+    EXPECT_EQ(sum, 5 + 6 + 7 + 8);
+
+    // Count even numbers in the subtree
+    auto even_count = std::ranges::count_if(
+        range, [](int x) { return x % 2 == 0; });
+    EXPECT_EQ(even_count, 2);
+}
+
+TYPED_TEST(GenericTreeFixture, subtree_view_modify_with_stl_algorithms)
+{
+    auto subtree_root = std::ranges::find(this->sut, 5);
+    auto range = subtree_view(this->sut, subtree_root);
+
+    // Modify values in the subtree using STL algorithms
+    std::for_each(range.begin(), range.end(), [](int& x) { x *= 2; });
+
+    EXPECT_THAT(this->sut, ElementsAre(1, 2, 10, 3, 4, 10, 12, 14, 16, 9));
+}
+
+TYPED_TEST(GenericTreeFixture, subtree_view_const_overload)
+{
+    const auto& const_tree = this->sut;
+    auto subtree_root = std::ranges::find(const_tree, 5);
+    auto range = subtree_view(const_tree, subtree_root);
+
+    // Should be able to read but not modify
+    std::vector<int> values(range.begin(), range.end());
+    EXPECT_THAT(values, ElementsAre(5, 6, 7, 8));
+
+    // The following would not compile (as expected for const):
+    // *range.begin() = 100;
+}
+
+TYPED_TEST(GenericTreeFixture, subtree_view_empty_subtree)
+{
+    // Test with a leaf node (should return a range of one element)
+    auto leaf_node = std::ranges::find(this->sut, 10);
+    auto range = subtree_view(this->sut, leaf_node);
+
+    std::vector<int> values(range.begin(), range.end());
+    EXPECT_THAT(values, ElementsAre(10));
+}
+
+TYPED_TEST(GenericTreeFixture, subtree_view_find_in_subtree)
+{
+    auto subtree_root = std::ranges::find(this->sut, 5);
+    auto range = subtree_view(this->sut, subtree_root);
+
+    // Use std::find on the subtree range
+    auto it = std::find(range.begin(), range.end(), 7);
+    EXPECT_NE(it, range.end());
+    EXPECT_EQ(*it, 7);
+
+    // Should not find values outside the subtree
+    it = std::find(range.begin(), range.end(), 3);
+    EXPECT_EQ(it, range.end());
+}
+
+TYPED_TEST(GenericTreeFixture, subtree_view_transform_subtree)
+{
+    auto subtree_root = std::ranges::find(this->sut, 5);
+    auto range = subtree_view(this->sut, subtree_root);
+
+    // Transform the subtree using STL
+    std::vector<int> transformed;
+    std::transform(range.begin(),
+                   range.end(),
+                   std::back_inserter(transformed),
+                   [](int x) { return x * 10; });
+
+    EXPECT_THAT(transformed, ElementsAre(50, 60, 70, 80));
 }
 
 TYPED_TEST(GenericTreeFixture, for_each_mutating_overload)

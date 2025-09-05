@@ -29,6 +29,97 @@ using SourcePosition = types::ImplicitNamedType<int64_t, details::SourcePosTag>;
 using DestinationPosition =
     types::ImplicitNamedType<int64_t, details::DestinationPosTag>;
 
+/*
+ * Returns a range of elements in a subtree.
+ *
+ * Allows to use range-based algorithms (that require std::forward_iterator, as Tree implementations only do provide forward iterators) directly on subtrees.
+ *
+ * Note that due to tree structure in order to build this view whole subtree must be traversed once, so complexity is linear in a size of subtree. There might be a faster implementation of specific algorithm in this header, so check this first.
+ */
+template <typename TreeType>
+auto subtree_view(const TreeType& tree,
+                  typename TreeType::const_iterator subtree_root)
+    -> std::ranges::subrange<typename TreeType::const_iterator>
+{
+    if (subtree_root == tree.end()) {
+        return std::ranges::subrange(tree.begin(), tree.end());
+    }
+    // For a proper subtree range, we need to find the end of the subtree
+    // Since our iterators are preorder, the end of the subtree is the next
+    // sibling or the next node after the subtree in preorder traversal
+
+    // Find the end of the subtree by doing a DFS to find the last node
+    // and then getting the iterator after that node
+    auto last_node = subtree_root;
+    std::stack<typename TreeType::const_iterator> frontier;
+    frontier.push(subtree_root);
+
+    while (not frontier.empty()) {
+        last_node = frontier.top();
+        frontier.pop();
+
+#ifdef __cpp_lib_containers_ranges
+        frontier.push_range(tree.children_iterators(last_node) |
+                            std::views::reverse);
+#else
+        std::ranges::for_each(
+            tree.children_iterators(last_node) | std::views::reverse,
+            [&frontier](auto child) { frontier.push(child); });
+#endif
+    }
+
+    // The end of the subtree is the iterator after the last node
+    auto end_it = last_node;
+    ++end_it;
+
+    return std::ranges::subrange(subtree_root, end_it);
+}
+
+/*
+ * Returns a range of elements in a subtree.
+ *
+ * Allows to use range-based algorithms (that require std::forward_iterator, as Tree implementations only do provide forward iterators) directly on subtrees.
+ *
+ * Note that due to tree structure in order to build this view whole subtree must be traversed once, so complexity is linear in a size of subtree. There might be a faster implementation of specific algorithm in this header, so check this first.
+ */
+template <typename TreeType>
+auto subtree_view(TreeType& tree, typename TreeType::iterator subtree_root)
+    -> std::ranges::subrange<typename TreeType::iterator>
+{
+    if (subtree_root == tree.end()) {
+        return std::ranges::subrange(tree.begin(), tree.end());
+    }
+    // For a proper subtree range, we need to find the end of the subtree
+    // Since our iterators are preorder, the end of the subtree is the next
+    // sibling or the next node after the subtree in preorder traversal
+
+    // Find the end of the subtree by doing a DFS to find the last node
+    // and then getting the iterator after that node
+    auto last_node = subtree_root;
+    std::stack<typename TreeType::iterator> frontier;
+    frontier.push(subtree_root);
+
+    while (not frontier.empty()) {
+        last_node = frontier.top();
+        frontier.pop();
+
+#ifdef __cpp_lib_containers_ranges
+        frontier.push_range(tree.children_iterators(last_node) |
+                            std::views::reverse);
+#else
+        std::ranges::for_each(
+            tree.children_iterators(last_node) | std::views::reverse,
+            [&frontier](auto child) { frontier.push(child); });
+#endif
+    }
+
+    // The end of the subtree is the iterator after the last node
+    auto end_it = last_node;
+    ++end_it;
+
+    return std::ranges::subrange(subtree_root, end_it);
+}
+
 /* Tree types do provide iterators, but those iterators do not support iterating
  * only over some subtree. I.e. suppose we have some tree:
  *
