@@ -176,6 +176,12 @@ public:
         {
         }
 
+        PreorderIterator(node_type* p_, node_type* prev_)
+            : ptr{p_}
+            , prev{prev_}
+        {
+        }
+
         PreorderIterator(const PreorderIterator&) = default;
 
         // Conversion constructor that permits convertion from iterator to
@@ -193,6 +199,46 @@ public:
         auto operator*() const -> element_type& { return ptr->payload; }
 
         auto operator->() -> element_type* { return &ptr->payload; }
+
+        // auto operator++() -> PreorderIterator&
+        // {
+        //     if (ptr == nullptr) {
+        //         return *this; // Already at end
+        //     }
+        //
+        //     // If current node has children, go to first child
+        //     if (!ptr->children.empty() && prev == ptr->parent) {
+        //         prev = ptr;
+        //         ptr = ptr->children[0].get();
+        //         return *this;
+        //     }
+        //
+        //     // Try to go to next sibling
+        //     if (ptr->parent != nullptr &&
+        //         ptr->pos + 1 < ptr->parent->children.size()) {
+        //         prev = ptr;
+        //         ptr = ptr->parent->children[ptr->pos + 1].get();
+        //         return *this;
+        //     }
+        //
+        //     // Go up until we find a node with next sibling
+        //     auto current = ptr;
+        //     while (current->parent != nullptr) {
+        //         prev = current;
+        //         current = current->parent;
+        //
+        //         if (current->parent != nullptr &&
+        //             prev->pos + 1 < current->children.size()) {
+        //             ptr = current->children[prev->pos + 1].get();
+        //             return *this;
+        //         }
+        //     }
+        //
+        //     // Reached the end
+        //     prev = ptr;
+        //     ptr = nullptr;
+        //     return *this;
+        // }
 
         auto operator++() -> PreorderIterator&
         {
@@ -230,7 +276,6 @@ public:
     private:
         node_type* ptr{nullptr};
         node_type* prev{nullptr};
-        typename std::vector<std::unique_ptr<Node>>::iterator p_it;
 
         auto bottom_reached() const -> bool
         {
@@ -515,18 +560,38 @@ public:
     // These are handy if a need arise to write manual tree traversal
     auto children_iterators(iterator it)
     {
+        // NOTE we are setting prev node for all children iterators to their parent.
+        // This is required for proper subtree iteration when using this method in more
+        // complex traversals.
+        //
+        // Note also that setting prev to parent is correct for the first child, but
+        // incorrect for the rest of them -- as iterator is now implemented, each child
+        // prev should point to previous child, but now it is pointing to parent instead.
+        // This is fine for forward_iterator, but if in the future more complex iterators
+        // will be implemented, this should be dealt with.
         auto* true_ptr = it == end() ? root.get() : it.ptr;
-        return std::views::transform(true_ptr->children, [](auto& node) {
-            return iterator{node.get()};
-        });
+        return std::views::transform(
+            true_ptr->children, [parent_ptr = true_ptr](auto& node) {
+                return iterator{node.get(), parent_ptr};
+            });
     }
 
     auto children_iterators(const_iterator it) const
     {
+        // NOTE we are setting prev node for all children iterators to their parent.
+        // This is required for proper subtree iteration when using this method in more
+        // complex traversals.
+        //
+        // Note also that setting prev to parent is correct for the first child, but
+        // incorrect for the rest of them -- as iterator is now implemented, each child
+        // prev should point to previous child, but now it is pointing to parent instead.
+        // This is fine for forward_iterator, but if in the future more complex iterators
+        // will be implemented, this should be dealt with.
         auto* true_ptr = it == end() ? root.get() : it.ptr;
-        return std::views::transform(true_ptr->children, [](const auto& node) {
-            return const_iterator{node.get()};
-        });
+        return std::views::transform(
+            true_ptr->children, [parent_ptr = true_ptr](const auto& node) {
+                return const_iterator{node.get(), parent_ptr};
+            });
     }
 
     auto empty() const -> bool { return children(cend()).size() == 0; }

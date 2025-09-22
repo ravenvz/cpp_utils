@@ -27,6 +27,51 @@ public:
     IntTree sut = this->make_sample_tree();
     IntTree inbox_tree = this->make_inbox_like_tree();
     CompoundTree compound_tree = this->make_compound_tree();
+    IntTree buggy_tree = this->make_buggy_tree();
+
+    IntTree empty_tree;
+
+    IntTree single_node_tree = []() {
+        IntTree tree;
+        tree.insert(tree.end(), 42);
+        return tree;
+    }();
+
+    IntTree simple_tree = []() {
+        /*
+         * 1
+         *   2
+         *   3
+         */
+        IntTree tree;
+        auto root = tree.insert(tree.end(), 1);
+        tree.insert(root, 2);
+        tree.insert(root, 3);
+        return tree;
+    }();
+
+    IntTree complex_tree = []() {
+        /*
+         * 1
+         *   2
+         *     4
+         *     5
+         *   3
+         *     6
+         *     7
+         *       8
+         */
+        IntTree tree;
+        auto root = tree.insert(tree.end(), 1);
+        auto child2 = tree.insert(root, 2);
+        auto child3 = tree.insert(root, 3);
+        tree.insert(child2, 4);
+        tree.insert(child2, 5);
+        tree.insert(child3, 6);
+        auto child7 = tree.insert(child3, 7);
+        tree.insert(child7, 8);
+        return tree;
+    }();
 
     auto make_sample_tree() -> IntTree
     {
@@ -184,6 +229,25 @@ public:
         tree.insert(tree.end(), CompoundType{8, "0"});
         return tree;
     }
+
+    auto make_buggy_tree() -> IntTree
+    {
+        /* task1
+         *   task2   [old]
+         *     task3 [old]
+         *     task4 [old]
+         * task5 [old]
+         *   task6
+         */
+        IntTree tree;
+        auto t1 = tree.insert(tree.end(), 2);
+        auto t2 = tree.insert(t1, 5);
+        tree.insert(t2, 3);
+        tree.insert(t2, 7);
+        auto t5 = tree.insert(tree.end(), 21);
+        tree.insert(t5, 14);
+        return tree;
+    }
 };
 
 using MyTypes = ::testing::Types<
@@ -218,23 +282,25 @@ TYPED_TEST(GenericTreeFixture, flatten_and_unflatten_inbox_tree)
     EXPECT_EQ(expected_flattened, this->inbox_tree.flatten());
 }
 
+TYPED_TEST(GenericTreeFixture, empty_tree_iteration)
+{
+    EXPECT_EQ(this->empty_tree.begin(), this->empty_tree.end());
+    EXPECT_EQ(this->empty_tree.cbegin(), this->empty_tree.cend());
+}
+
+TYPED_TEST(GenericTreeFixture, single_node_tree_iteration)
+{
+    EXPECT_THAT(this->single_node_tree, ElementsAre(42));
+
+    auto it = this->single_node_tree.begin();
+    EXPECT_EQ(*it, 42);
+    ++it;
+    EXPECT_EQ(it, this->single_node_tree.end());
+}
+
 TYPED_TEST(GenericTreeFixture, dfs_iteration)
 {
     EXPECT_THAT(this->sut, ElementsAre(1, 2, 10, 3, 4, 5, 6, 7, 8, 9));
-}
-
-TYPED_TEST(GenericTreeFixture, begin_end_iterators_of_empty_tree)
-{
-    typename TestFixture::StringTree tree;
-
-    EXPECT_EQ(tree.begin(), tree.end());
-}
-
-TYPED_TEST(GenericTreeFixture, cbegin_cend_iterators_of_empty_tree)
-{
-    typename TestFixture::StringTree tree;
-
-    EXPECT_EQ(tree.cbegin(), tree.cend());
 }
 
 TYPED_TEST(GenericTreeFixture, accessing_iterator)
@@ -247,6 +313,92 @@ TYPED_TEST(GenericTreeFixture, accessing_iterator)
     EXPECT_EQ((*it).id, it->id);
     EXPECT_EQ("2", (*it).id);
     EXPECT_EQ("2", it->id);
+}
+
+TYPED_TEST(GenericTreeFixture, iterator_copy_and_assignment)
+{
+    auto it1 = this->simple_tree.begin();
+    auto it2 = it1; // Copy constructor
+    EXPECT_EQ(*it1, *it2);
+
+    auto it3 = this->simple_tree.begin();
+    ++it3;
+    it3 = it1; // Assignment operator
+    EXPECT_EQ(*it1, *it3);
+}
+
+TYPED_TEST(GenericTreeFixture, const_iterator)
+{
+    const auto& const_tree = this->simple_tree;
+    EXPECT_THAT(const_tree, ElementsAre(1, 2, 3));
+
+    auto it = const_tree.cbegin();
+    EXPECT_EQ(*it, 1);
+    ++it;
+    EXPECT_EQ(*it, 2);
+}
+
+TYPED_TEST(GenericTreeFixture, iterator_conversion)
+{
+    // Conversion from iterator to const_iterator
+    typename TestFixture::IntTree::iterator it = this->simple_tree.begin();
+    typename TestFixture::IntTree::const_iterator cit = it;
+
+    EXPECT_EQ(*it, *cit);
+}
+
+TYPED_TEST(GenericTreeFixture, postfix_increment)
+{
+    auto it = this->simple_tree.begin();
+    auto it2 = it++;
+    EXPECT_EQ(*it2, 1);
+    EXPECT_EQ(*it, 2);
+}
+
+TYPED_TEST(GenericTreeFixture, prefix_increment)
+{
+    auto it = this->simple_tree.begin();
+    auto it2 = ++it;
+    EXPECT_EQ(*it, 2);
+    EXPECT_EQ(*it2, 2);
+}
+
+TYPED_TEST(GenericTreeFixture, iterator_equality)
+{
+    auto it1 = this->simple_tree.begin();
+    auto it2 = this->simple_tree.begin();
+    EXPECT_EQ(it1, it2);
+
+    ++it1;
+    EXPECT_NE(it1, it2);
+}
+
+TYPED_TEST(GenericTreeFixture, iterator_arrow_operator)
+{
+    struct TestStruct {
+        int value;
+        std::string name;
+    };
+
+    typename TestFixture::template TreeType<TestStruct> tree;
+    auto root = tree.insert(tree.end(), TestStruct{1, "root"});
+    tree.insert(root, TestStruct{2, "child"});
+
+    auto it = tree.begin();
+    EXPECT_EQ(it->value, 1);
+    EXPECT_EQ(it->name, "root");
+
+    ++it;
+    EXPECT_EQ(it->value, 2);
+    EXPECT_EQ(it->name, "child");
+}
+
+TYPED_TEST(GenericTreeFixture, tree_copy)
+{
+    typename TestFixture::IntTree copy = this->simple_tree;
+    EXPECT_THAT(copy, ElementsAre(1, 2, 3));
+    EXPECT_THAT(this->simple_tree,
+                ElementsAre(1, 2, 3)); // Original should be unchanged
 }
 
 TYPED_TEST(GenericTreeFixture, returns_tree_size)
@@ -348,8 +500,8 @@ TYPED_TEST(GenericTreeFixture, subtree_view_with_stl_algorithms)
     EXPECT_EQ(sum, 5 + 6 + 7 + 8);
 
     // Count even numbers in the subtree
-    auto even_count = std::ranges::count_if(
-        range, [](int x) { return x % 2 == 0; });
+    auto even_count =
+        std::ranges::count_if(range, [](int x) { return x % 2 == 0; });
     EXPECT_EQ(even_count, 2);
 }
 
@@ -416,6 +568,50 @@ TYPED_TEST(GenericTreeFixture, subtree_view_transform_subtree)
                    [](int x) { return x * 10; });
 
     EXPECT_THAT(transformed, ElementsAre(50, 60, 70, 80));
+}
+
+TYPED_TEST(GenericTreeFixture, buggy_bug_correct)
+{
+    std::vector<int> removed;
+    auto filter_out_odd_subtrees = [&](auto it) {
+        auto str = this->buggy_tree.subtree(it);
+        return std::ranges::all_of(str, [](auto val) { return val & 1; });
+    };
+    auto actual = filter_it(this->buggy_tree, [&](auto it) {
+        auto shouldRemove = filter_out_odd_subtrees(it);
+        if (shouldRemove) {
+            for_each_it(this->buggy_tree, it, [&](auto tit) {
+                removed.push_back(*tit);
+            });
+        }
+        return not shouldRemove;
+    });
+
+    EXPECT_THAT(removed, ElementsAre(5, 3, 7));
+    EXPECT_THAT(actual, ElementsAre(2, 21, 14));
+}
+
+TYPED_TEST(GenericTreeFixture,
+           regression_using_children_iterators_in_complex_algorithms)
+{
+    const auto& const_tree = this->buggy_tree;
+    std::vector<int> removed;
+    auto filter_out_odd_subtrees = [&](const auto it) {
+        auto subtree = subtree_view(const_tree, it);
+        return std::ranges::all_of(subtree, [](auto val) { return val & 1; });
+    };
+    auto actual = filter_it(const_tree, [&](const auto it) {
+        auto shouldRemove = filter_out_odd_subtrees(it);
+        if (shouldRemove) {
+            for_each_it(const_tree, it, [&](const auto tit) {
+                removed.push_back(*tit);
+            });
+        }
+        return not shouldRemove;
+    });
+
+    EXPECT_THAT(removed, ElementsAre(5, 3, 7));
+    EXPECT_THAT(actual, ElementsAre(2, 21, 14));
 }
 
 TYPED_TEST(GenericTreeFixture, for_each_mutating_overload)
@@ -555,6 +751,44 @@ TYPED_TEST(GenericTreeFixture, returns_node_position_in_children)
     EXPECT_EQ(0, this->sut.position_in_children(this->sut.cend()));
 }
 
+TYPED_TEST(GenericTreeFixture, deep_tree)
+{
+    // Test with a deep tree to check for stack overflow in iterator
+    typename TestFixture::IntTree tree;
+    auto current = tree.insert(tree.end(), 0);
+
+    for (int i = 1; i < 1000; ++i) {
+        current = tree.insert(current, i);
+    }
+
+    // Should be able to iterate without stack overflow
+    int count = 0;
+    for (auto it = tree.begin(); it != tree.end(); ++it) {
+        ++count;
+    }
+
+    EXPECT_EQ(count, 1000);
+}
+
+TYPED_TEST(GenericTreeFixture, wide_tree)
+{
+    // Test with a wide tree
+    typename TestFixture::IntTree tree;
+    auto root = tree.insert(tree.end(), 0);
+
+    for (int i = 1; i < 1000; ++i) {
+        tree.insert(root, i);
+    }
+
+    // Should be able to iterate without issues
+    int count = 0;
+    for (auto it = tree.begin(); it != tree.end(); ++it) {
+        ++count;
+    }
+
+    EXPECT_EQ(count, 1000);
+}
+
 TYPED_TEST(GenericTreeFixture, following_parents)
 {
     auto it = std::ranges::find(this->sut, 8);
@@ -587,6 +821,33 @@ TYPED_TEST(GenericTreeFixture, provides_view_to_root_children)
     const auto children = this->sut.children(this->sut.cend());
 
     EXPECT_TRUE(std::ranges::equal(expected, children));
+}
+
+TYPED_TEST(GenericTreeFixture, tree_equality)
+{
+    typename TestFixture::IntTree tree1;
+    auto root1 = tree1.insert(tree1.end(), 1);
+    tree1.insert(root1, 2);
+    tree1.insert(root1, 3);
+
+    typename TestFixture::IntTree tree2;
+    auto root2 = tree2.insert(tree2.end(), 1);
+    tree2.insert(root2, 2);
+    tree2.insert(root2, 3);
+
+    EXPECT_EQ(tree1, tree2);
+
+    typename TestFixture::IntTree tree3;
+    auto root3 = tree3.insert(tree3.end(), 1);
+    tree3.insert(root3, 2);
+    tree3.insert(root3, 4); // Different value
+
+    EXPECT_NE(tree1, tree3);
+}
+
+TYPED_TEST(GenericTreeFixture, regression_equality_testing_bug)
+{
+    EXPECT_FALSE(this->sut == this->make_move_testing_tree());
 }
 
 TYPED_TEST(GenericTreeFixture, erasing_nodes)
@@ -638,9 +899,10 @@ TYPED_TEST(GenericTreeFixture, inserting_at_position)
 {
     auto actual = this->sut.insert(
         std::ranges::find(this->sut, 5), 77, DestinationPosition{1});
+    this->sut.insert(this->sut.end(), 22);
 
     EXPECT_EQ(std::ranges::find(this->sut, 77), actual);
-    EXPECT_THAT(this->sut, ElementsAre(1, 2, 10, 3, 4, 5, 6, 77, 7, 8, 9));
+    EXPECT_THAT(this->sut, ElementsAre(1, 2, 10, 3, 4, 5, 6, 77, 7, 8, 9, 22));
 }
 
 TYPED_TEST(GenericTreeFixture, inserting_at_optional_position)
@@ -1575,8 +1837,7 @@ TYPED_TEST(GenericTreeFixture, finds_projected_value_in_subtree_const_overload)
     tree.insert(it1, CompoundType{2, "3"});
     tree.insert(tree.end(), CompoundType{2, "4"});
     const auto const_tree = tree;
-
-    auto it = tree.cbegin();
+    auto it = const_tree.cbegin();
     ++it;
     ++it;
     auto projection = [](const auto& elem) { return elem.some_value; };
@@ -1678,22 +1939,17 @@ TYPED_TEST(GenericTreeFixture,
     tree.insert(it3, CompoundType{1, "2"});
     tree.insert(it1, CompoundType{2, "3"});
     tree.insert(tree.end(), CompoundType{2, "4"});
-    const auto const_tree = tree;
-    auto const_subtree_it = const_tree.cbegin();
-    ++const_subtree_it;
-    ++const_subtree_it;
 
     auto projection = [](const auto& elem) { return elem.id; };
     auto predicate = [](const auto& str) { return str.size() >= 2; };
-    auto actual_it =
-        find_if(const_tree, const_subtree_it, predicate, projection);
+    auto actual_it = find_if(tree, subtree_it, predicate, projection);
 
     EXPECT_EQ(2, actual_it->some_value);
     EXPECT_EQ("222", actual_it->id);
-    EXPECT_EQ(tree.end(),
+    EXPECT_EQ(tree.cend(),
               find_if(
-                  const_tree,
-                  const_subtree_it,
+                  tree,
+                  subtree_it,
                   [](const auto& str) { return str.size() == 77; },
                   projection));
 }
