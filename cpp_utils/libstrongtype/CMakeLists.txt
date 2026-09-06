@@ -16,8 +16,6 @@ INTERFACE
 target_include_directories(${MODULE} INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/../..")
 
 if(ENABLE_TESTING)
-    find_package(GTest REQUIRED)
-
     add_executable(test_${MODULE} StrongType.test.cpp)
 
     target_sources(test_${MODULE}
