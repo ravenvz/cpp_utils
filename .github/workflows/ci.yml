@@ -73,4 +73,4 @@ jobs:
         
         # Run CTest
         cd build
-        ctest --progress --output-on-failure -C ${{ matrix.build_type }
+        ctest --progress --output-on-failure -C ${{ matrix.build_type }}
