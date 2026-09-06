@@ -1,0 +1,76 @@
+name: Multi-Platform C++26 CI Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-matrix:
+    name: ${{ matrix.name }} (${{ matrix.build_type }})
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        # 1. Define your base platforms and compilers
+        platform:
+          - { name: "Ubuntu - GCC", os: ubuntu-latest, cc: gcc-14, cxx: g++-14, container: "" }
+          - { name: "Ubuntu - Clang", os: ubuntu-latest, cc: clang-18, cxx: clang++-18, container: "" }
+          - { name: "Windows - MSVC", os: windows-latest, cc: cl, cxx: cl, container: "" }
+          - { name: "Arch Linux - GCC", os: ubuntu-latest, cc: gcc, cxx: g++, container: "archlinux:latest", options: "--privileged" }
+        
+        # 2. Define your configurations. GitHub will multiply these with your platforms!
+        # (e.g., Ubuntu-GCC-Debug, Ubuntu-GCC-Release, Windows-MSVC-Debug, etc.)
+        build_type: [Debug, Release]
+
+    # Assigns container fields dynamically from the matrix platform configuration
+    container:
+      image: ${{ matrix.platform.container }}
+      options: ${{ matrix.platform.options }}
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    # --- SCRIPT STEP FOR LINUX SYSTEMS (UBUNTU / ARCH) ---
+    - name: Install Linux Packages
+      if: matrix.platform.os == 'ubuntu-latest'
+      run: |
+        if command -v pacman &> /dev/null; then
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm base-devel cmake ninja git
+        else
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build
+        fi
+
+    # --- SCRIPT STEP FOR WINDOWS (MSVC) ---
+    - name: Configure Developer Command Prompt for MSVC
+      if: matrix.platform.os == 'windows-latest'
+      uses: ilammy/msvc-dev-cmd@v1
+
+    # --- THE RUN LOOP ---
+    - name: Run Build Loop
+      shell: bash
+      env:
+        CC: ${{ matrix.platform.cc }}
+        CXX: ${{ matrix.platform.cxx }}
+      run: |
+        # Pass ${{ matrix.build_type }} dynamically to CMake
+        cmake -G Ninja -B build -S . \
+          -DENABLE_CACHE=OFF \
+          -DENABLE_TESTING=ON \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          -DWARNINGS_AS_ERRORS=ON \
+          -DENABLE_SANITIZER_THREAD=False \
+          -DCMAKE_VERBOSE_MAKEFILE=OFF \
+          -DCMAKE_CXX_STDLIB_MODULES_JSON="$HOME/.config/cmake-fixes/fixed_libstdc++.modules.json"
+          
+        # Compile using the requested configuration
+        cmake --build build --config ${{ matrix.build_type }}
+        
+        # Run CTest
+        cd build
+        ctest --progress --output-on-failure -C ${{ matrix.build_type }
