@@ -28,6 +28,7 @@ function(set_project_warnings project_name)
       /w14905 # wide string literal cast to 'LPSTR'
       /w14906 # string literal cast to 'LPWSTR'
       /w14928 # illegal copy-initialization; more than one user-defined conversion has been implicitly applied
+      /w34996 # do not treat usage of deprecated functionality as error (remaps 4996 warning as level-3 warning shielding it from global /WX)
       /permissive- # standards conformance mode for MSVC compiler.
   )
 
@@ -47,6 +48,7 @@ function(set_project_warnings project_name)
       -Wnull-dereference # warn if a null dereference is detected
       -Wdouble-promotion # warn if float is implicit promoted to double
       -Wformat=2 # warn on security issues around functions that format output (ie printf)
+      -Wno-error=deprecated-declarations # do not treat usage of deprecated functionality as error
   )
 
   if(WARNINGS_AS_ERRORS)

@@ -2,7 +2,11 @@ cmake_minimum_required(VERSION 3.22)
 
 set(PROJECT cpp_utils)
 
-project(${PROJECT} VERSION 0.8.6)
+project(${PROJECT} VERSION 1.0.0 LANGUAGES CXX)
+
+option(BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
+option(ENABLE_TESTING "Enable Test Builds" OFF)
+option(ENABLE_FUZZING "Enable Fuzzing Builds" OFF)
 
 # Download CPM
 include(cmake/CpmDownload.cmake)
@@ -12,7 +16,7 @@ include(cmake/PreventInSourceBuilds.cmake)
 
 # Link this 'library' to set the c++ standard / compile-time options requested
 add_library(project_options INTERFACE)
-target_compile_features(project_options INTERFACE cxx_std_23)
+target_compile_features(project_options INTERFACE cxx_std_26)
 add_compile_options("-fconcepts-diagnostics-depth=2")
 
 if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
@@ -43,17 +47,10 @@ enable_sanitizers(project_options)
 # allow for static analysis options
 include(cmake/StaticAnalyzers.cmake)
 
-option(BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
-option(ENABLE_TESTING "Enable Test Builds" OFF)
-option(ENABLE_FUZZING "Enable Fuzzing Builds" OFF)
-
-add_subdirectory(cpp_utils)
-
-enable_testing()
-
-if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND ENABLE_TESTING)
-    set(TEST_RUN_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
-	include(GoogleTest)
-    add_subdirectory(${PROJECT}/tests)
+if (ENABLE_TESTING)
+    enable_testing()
+    include(cmake/GtestDownload.cmake)
+    include(GoogleTest)
 endif()
 
+add_subdirectory(cpp_utils)
