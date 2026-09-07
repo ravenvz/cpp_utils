@@ -353,6 +353,7 @@ TYPED_TEST(GenericTreeFixture, postfix_increment)
 {
     auto it = this->simple_tree.begin();
     auto it2 = it++;
+
     EXPECT_EQ(*it2, 1);
     EXPECT_EQ(*it, 2);
 }

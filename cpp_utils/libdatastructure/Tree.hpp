@@ -2,6 +2,7 @@
 #define TREE_H_1MKPBXLX
 
 #include <algorithm>
+#include <cassert>
 #include <concepts>
 #include <cpp_utils/libalgorithm/alg_ext.hpp>
 #include <cpp_utils/libdatastructure/TreeCommon.hpp>
@@ -175,12 +176,6 @@ public:
         {
         }
 
-        PreorderIterator(node_type* p_, node_type* prev_)
-            : ptr{p_}
-            , prev{prev_}
-        {
-        }
-
         PreorderIterator(const PreorderIterator&) = default;
 
         // Conversion constructor that permits convertion from iterator to
@@ -191,65 +186,59 @@ public:
                      std::is_same_v<std::remove_const_t<node_type>, n_type>)
         PreorderIterator(const PreorderIterator<nv_type, n_type>& rhs)
             : ptr{rhs.ptr}
-            , prev{rhs.prev}
         {
         }
 
-        auto operator*() const -> element_type& { return ptr->payload; }
+        auto operator*() const -> element_type&
+        {
+            if (ptr == nullptr) [[unlikely]] {
+                throw std::runtime_error{
+                    "cpp_utils::datastructure::Tree::iterator: Attempted to "
+                    "dereference an end() iterator."};
+            }
+            return ptr->payload;
+        }
 
-        auto operator->() -> element_type* { return &ptr->payload; }
-
-        // auto operator++() -> PreorderIterator&
-        // {
-        //     if (ptr == nullptr) {
-        //         return *this; // Already at end
-        //     }
-        //
-        //     // If current node has children, go to first child
-        //     if (!ptr->children.empty() && prev == ptr->parent) {
-        //         prev = ptr;
-        //         ptr = ptr->children[0].get();
-        //         return *this;
-        //     }
-        //
-        //     // Try to go to next sibling
-        //     if (ptr->parent != nullptr &&
-        //         ptr->pos + 1 < ptr->parent->children.size()) {
-        //         prev = ptr;
-        //         ptr = ptr->parent->children[ptr->pos + 1].get();
-        //         return *this;
-        //     }
-        //
-        //     // Go up until we find a node with next sibling
-        //     auto current = ptr;
-        //     while (current->parent != nullptr) {
-        //         prev = current;
-        //         current = current->parent;
-        //
-        //         if (current->parent != nullptr &&
-        //             prev->pos + 1 < current->children.size()) {
-        //             ptr = current->children[prev->pos + 1].get();
-        //             return *this;
-        //         }
-        //     }
-        //
-        //     // Reached the end
-        //     prev = ptr;
-        //     ptr = nullptr;
-        //     return *this;
-        // }
+        auto operator->() -> element_type*
+        {
+            if (ptr == nullptr) [[unlikely]] {
+                throw std::runtime_error{
+                    "cpp_utils::datastructure::Tree::iterator: Attempted to "
+                    "dereference an end() iterator."};
+            }
+            return &ptr->payload;
+        }
 
         auto operator++() -> PreorderIterator&
         {
-            auto* tmp = ptr;
-            ptr = bottom_reached() ? ptr->parent : next_node();
-            prev = tmp;
-
-            // Node has been visited before, skip it
-            if (ptr and prev != ptr->parent) {
-                this->operator++(1);
+            if (ptr == nullptr) {
+                return *this;
             }
 
+            // 1. Preorder rule: Always dive into children first if they exist
+            if (!ptr->children.empty()) {
+                ptr = ptr->children.front().get();
+                return *this;
+            }
+
+            // 2. No children? Find the next sibling, climbing up if necessary
+            auto* current = ptr;
+            while (current->parent != nullptr) {
+                auto* parent = current->parent;
+                const auto next_idx = static_cast<size_t>(current->pos + 1);
+
+                if (next_idx < parent->children.size()) {
+                    ptr = parent->children[next_idx].get();
+                    return *this;
+                }
+
+                // Move up to parent to try finding an unvisited uncle/ancestor
+                // sibling
+                current = parent;
+            }
+
+            // 3. Reached the root's upper boundary -> end of traversal
+            ptr = nullptr;
             return *this;
         }
 
@@ -274,24 +263,6 @@ public:
 
     private:
         node_type* ptr{nullptr};
-        node_type* prev{nullptr};
-
-        auto bottom_reached() const -> bool
-        {
-            // ptr points to leaf without siblings to the right
-            return ptr->children.empty() or
-                   (prev != ptr->parent and
-                    (prev->pos + 1 >= std::ssize(ptr->children)));
-        }
-
-        auto next_node() const -> node_type*
-        {
-            // Pick first child if came from parent or next child if came from
-            // child.
-            const auto offset =
-                static_cast<size_t>(prev == ptr->parent ? 0 : prev->pos + 1);
-            return ptr->children[offset].get();
-        }
     };
 
     using value_type = T;
@@ -559,40 +530,18 @@ public:
     // These are handy if a need arise to write manual tree traversal
     auto children_iterators(iterator it)
     {
-        // NOTE we are setting prev node for all children iterators to their
-        // parent. This is required for proper subtree iteration when using this
-        // method in more complex traversals.
-        //
-        // Note also that setting prev to parent is correct for the first child,
-        // but incorrect for the rest of them -- as iterator is now implemented,
-        // each child prev should point to previous child, but now it is
-        // pointing to parent instead. This is fine for forward_iterator, but if
-        // in the future more complex iterators will be implemented, this should
-        // be dealt with.
         auto* true_ptr = it == end() ? root.get() : it.ptr;
-        return std::views::transform(
-            true_ptr->children, [parent_ptr = true_ptr](auto& node) {
-                return iterator{node.get(), parent_ptr};
-            });
+        return std::views::transform(true_ptr->children, [](auto& node) {
+            return iterator{node.get()};
+        });
     }
 
     auto children_iterators(const_iterator it) const
     {
-        // NOTE we are setting prev node for all children iterators to their
-        // parent. This is required for proper subtree iteration when using this
-        // method in more complex traversals.
-        //
-        // Note also that setting prev to parent is correct for the first child,
-        // but incorrect for the rest of them -- as iterator is now implemented,
-        // each child prev should point to previous child, but now it is
-        // pointing to parent instead. This is fine for forward_iterator, but if
-        // in the future more complex iterators will be implemented, this should
-        // be dealt with.
         auto* true_ptr = it == end() ? root.get() : it.ptr;
-        return std::views::transform(
-            true_ptr->children, [parent_ptr = true_ptr](const auto& node) {
-                return const_iterator{node.get(), parent_ptr};
-            });
+        return std::views::transform(true_ptr->children, [](const auto& node) {
+            return const_iterator{node.get()};
+        });
     }
 
     auto empty() const -> bool { return children(cend()).size() == 0; }
@@ -718,23 +667,49 @@ public:
         return ss.str();
     }
 
-    auto begin() -> iterator { return ++iterator(root.get()); }
+    auto begin() -> iterator
+    {
+        return iterator(root->children.empty() ? nullptr
+                                               : root->children.front().get());
+    }
 
     auto end() -> iterator { return iterator(nullptr); }
 
     auto begin() const -> const_iterator
     {
-        return ++const_iterator(root.get());
+        return const_iterator(
+            root->children.empty() ? nullptr : root->children.front().get());
     }
 
     auto end() const -> const_iterator { return const_iterator(nullptr); }
 
     auto cbegin() const -> const_iterator
     {
-        return ++const_iterator(root.get());
+        return const_iterator(
+            root->children.empty() ? nullptr : root->children.front().get());
     }
 
     auto cend() const -> const_iterator { return const_iterator(nullptr); }
+
+    // // auto begin() -> iterator { return ++iterator(root.get()); }
+    // auto begin() -> iterator { return iterator(root->children.empty() ?
+    // nullptr : root->children[0].get(), root.get()); }
+    //
+    // auto end() -> iterator { return iterator(nullptr); }
+    //
+    // auto begin() const -> const_iterator
+    // {
+    //     return ++const_iterator(root.get());
+    // }
+    //
+    // auto end() const -> const_iterator { return const_iterator(nullptr); }
+    //
+    // auto cbegin() const -> const_iterator
+    // {
+    //     return ++const_iterator(root.get());
+    // }
+    //
+    // auto cend() const -> const_iterator { return const_iterator(nullptr); }
 
     friend auto operator==(const Tree& lhs, const Tree& rhs) -> bool
     {
