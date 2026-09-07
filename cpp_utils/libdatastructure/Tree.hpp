@@ -691,26 +691,6 @@ public:
 
     auto cend() const -> const_iterator { return const_iterator(nullptr); }
 
-    // // auto begin() -> iterator { return ++iterator(root.get()); }
-    // auto begin() -> iterator { return iterator(root->children.empty() ?
-    // nullptr : root->children[0].get(), root.get()); }
-    //
-    // auto end() -> iterator { return iterator(nullptr); }
-    //
-    // auto begin() const -> const_iterator
-    // {
-    //     return ++const_iterator(root.get());
-    // }
-    //
-    // auto end() const -> const_iterator { return const_iterator(nullptr); }
-    //
-    // auto cbegin() const -> const_iterator
-    // {
-    //     return ++const_iterator(root.get());
-    // }
-    //
-    // auto cend() const -> const_iterator { return const_iterator(nullptr); }
-
     friend auto operator==(const Tree& lhs, const Tree& rhs) -> bool
     {
         // Obviously DFS alone cannot be used for comparing trees, so we compare

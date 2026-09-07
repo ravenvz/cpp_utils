@@ -59,13 +59,6 @@ public:
         {
         }
 
-        PreorderIterator(int64_t p_, int64_t prev_, LinearTree<T>* tree_ptr)
-            : ptr{p_}
-            , prev{prev_}
-            , tree{tree_ptr}
-        {
-        }
-
         PreorderIterator(const PreorderIterator&) = default;
 
         auto operator=(const PreorderIterator&) -> PreorderIterator& = default;
@@ -73,17 +66,24 @@ public:
         // Conversion to const iterator
         operator ConstPreorderIterator<const v_type, const n_type>() const
         {
-            return ConstPreorderIterator<const v_type, const n_type>{
-                ptr, prev, tree};
+            return ConstPreorderIterator<const v_type, const n_type>{ptr, tree};
         }
 
         auto operator*() const -> element_type&
         {
+            if (ptr == -1 or tree == nullptr) [[unlikely]] {
+                throw std::runtime_error{
+                    "LinearTree::iterator: Dereferencing null or end()"};
+            }
             return tree->get_node(ptr).payload;
         }
 
         auto operator->() -> element_type*
         {
+            if (ptr == -1 or tree == nullptr) [[unlikely]] {
+                throw std::runtime_error{
+                    "LinearTree::iterator: Dereferencing null or end()"};
+            }
             return &tree->get_node(ptr).payload;
         }
 
@@ -95,36 +95,32 @@ public:
 
             const auto& current_node = tree->get_node(ptr);
 
-            // If we came from the parent, go to the first child
-            if (prev == current_node.parent) {
-                if (!current_node.children.empty()) {
-                    prev = ptr;
-                    ptr = current_node.children[0];
+            // 1. Visit children first
+            if (!current_node.children.empty()) {
+                ptr = current_node.children.front();
+                return *this;
+            }
+
+            // 2. No children? Climb up to find a sibling branch index
+            int64_t curr_idx = ptr;
+            while (curr_idx != 0) { // 0 is root index
+                const auto& node = tree->get_node(curr_idx);
+                if (node.parent == -1)
+                    break;
+
+                const auto& parent_node = tree->get_node(node.parent);
+                const auto next_sibling_pos = node.pos + 1;
+
+                if (next_sibling_pos < std::ssize(parent_node.children)) {
+                    ptr = parent_node
+                              .children[static_cast<size_t>(next_sibling_pos)];
                     return *this;
                 }
+                curr_idx = node.parent;
             }
 
-            // If we came from a child, try to go to the next sibling
-            if (prev != current_node.parent && prev != -1) {
-                const auto& prev_node = tree->get_node(prev);
-                if (prev_node.pos + 1 <
-                    static_cast<int64_t>(current_node.children.size())) {
-                    prev = ptr;
-                    ptr = current_node
-                              .children[static_cast<size_t>(prev_node.pos) + 1];
-                    return *this;
-                }
-            }
-
-            // If no more children, go back to the parent
-            prev = ptr;
-            ptr = current_node.parent;
-
-            // If we're not at the end, continue navigating
-            if (ptr != -1) {
-                this->operator++();
-            }
-
+            // 3. Traversal exhausted
+            ptr = -1;
             return *this;
         }
 
@@ -149,7 +145,6 @@ public:
 
     private:
         int64_t ptr{-1};
-        int64_t prev{-1};
         LinearTree<T>* tree{nullptr};
     };
 
@@ -172,21 +167,11 @@ public:
         {
         }
 
-        ConstPreorderIterator(int64_t p_,
-                              int64_t prev_,
-                              const LinearTree<T>* tree_ptr)
-            : ptr{p_}
-            , prev{prev_}
-            , tree{tree_ptr}
-        {
-        }
-
         ConstPreorderIterator(const ConstPreorderIterator&) = default;
 
         // Conversion from non-const iterator
         ConstPreorderIterator(const PreorderIterator<v_type, n_type>& rhs)
             : ptr{rhs.ptr}
-            , prev{rhs.prev}
             , tree{rhs.tree}
         {
         }
@@ -199,18 +184,25 @@ public:
             -> ConstPreorderIterator&
         {
             ptr = rhs.ptr;
-            prev = rhs.prev;
             tree = rhs.tree;
             return *this;
         }
 
         auto operator*() const -> const element_type&
         {
+            if (ptr == -1 or tree == nullptr) [[unlikely]] {
+                throw std::runtime_error{
+                    "LinearTree::const_iterator: Dereferencing null or end()"};
+            }
             return tree->get_node(ptr).payload;
         }
 
         auto operator->() -> const element_type*
         {
+            if (ptr == -1 or tree == nullptr) [[unlikely]] {
+                throw std::runtime_error{
+                    "LinearTree::const_iterator: Dereferencing null or end()"};
+            }
             return &tree->get_node(ptr).payload;
         }
 
@@ -222,36 +214,29 @@ public:
 
             const auto& current_node = tree->get_node(ptr);
 
-            // If we came from the parent, go to the first child
-            if (prev == current_node.parent) {
-                if (!current_node.children.empty()) {
-                    prev = ptr;
-                    ptr = current_node.children[0];
+            if (!current_node.children.empty()) {
+                ptr = current_node.children.front();
+                return *this;
+            }
+
+            int64_t curr_idx = ptr;
+            while (curr_idx != 0) {
+                const auto& node = tree->get_node(curr_idx);
+                if (node.parent == -1)
+                    break;
+
+                const auto& parent_node = tree->get_node(node.parent);
+                const auto next_sibling_pos = node.pos + 1;
+
+                if (next_sibling_pos < std::ssize(parent_node.children)) {
+                    ptr = parent_node
+                              .children[static_cast<size_t>(next_sibling_pos)];
                     return *this;
                 }
+                curr_idx = node.parent;
             }
 
-            // If we came from a child, try to go to the next sibling
-            if (prev != current_node.parent && prev != -1) {
-                const auto& prev_node = tree->get_node(prev);
-                if (prev_node.pos + 1 <
-                    static_cast<int64_t>(current_node.children.size())) {
-                    prev = ptr;
-                    ptr = current_node
-                              .children[static_cast<size_t>(prev_node.pos) + 1];
-                    return *this;
-                }
-            }
-
-            // If no more children, go back to the parent
-            prev = ptr;
-            ptr = current_node.parent;
-
-            // If we're not at the end, continue navigating
-            if (ptr != -1) {
-                this->operator++();
-            }
-
+            ptr = -1;
             return *this;
         }
 
@@ -276,7 +261,6 @@ public:
 
     private:
         int64_t ptr{-1};
-        int64_t prev{-1};
         const LinearTree<T>* tree{nullptr};
     };
 
@@ -326,7 +310,7 @@ public:
         const auto child_index = insert_into_free_spot(
             Node{true_parent, std::move(payload), pos, std::vector<int64_t>{}});
         get_node(true_parent).children.push_back(child_index);
-        return iterator{child_index, true_parent, this};
+        return iterator{child_index, this};
     }
 
     auto insert(iterator parent, T payload, DestinationPosition insert_pos)
@@ -343,7 +327,7 @@ public:
         parent_children.insert(parent_children.begin() + insert_pos.get(),
                                child_index);
         fix_positions_and_parents(true_parent, insert_pos.get());
-        return iterator{child_index, true_parent, this};
+        return iterator{child_index, this};
     }
 
     auto insert(iterator parent,
@@ -435,7 +419,7 @@ public:
 #endif
 
         fix_positions_and_parents(true_parent, insert_pos.get());
-        return iterator{indexes.front(), true_parent, this};
+        return iterator{indexes.front(), this};
     }
 
     auto insert_subtree(iterator parent,
@@ -531,18 +515,20 @@ public:
 
     auto parent(const_iterator it) const -> const_iterator
     {
-        if (get_node(it.ptr).parent == 0 or it == cend()) {
+        if (it == cend() || get_node(it.ptr).parent == -1 ||
+            get_node(it.ptr).parent == 0) {
             return cend();
         }
-        return const_iterator{get_node(it.ptr).parent, it.ptr, this};
+        return const_iterator{get_node(it.ptr).parent, this};
     }
 
     auto parent(iterator it) -> iterator
     {
-        if (get_node(it.ptr).parent == 0 or it == end()) {
+        if (it == end() || get_node(it.ptr).parent == -1 ||
+            get_node(it.ptr).parent == 0) {
             return end();
         }
-        return iterator{get_node(it.ptr).parent, it.ptr, this};
+        return iterator{get_node(it.ptr).parent, this};
     }
 
     auto children(iterator it)
@@ -565,42 +551,19 @@ public:
 
     auto children_iterators(iterator it)
     {
-        // NOTE we are setting prev node for all children iterators to their
-        // parent. This is required for proper subtree iteration when using this
-        // method in more complex traversals.
-        //
-        // Note also that setting prev to parent is correct for the first child,
-        // but incorrect for the rest of them -- as iterator is now implemented,
-        // each child prev should point to previous child, but now it is
-        // pointing to parent instead. This is fine for forward_iterator, but if
-        // in the future more complex iterators will be implemented, this should
-        // be dealt with.
         const auto index = find_true_index(it);
-        return std::views::transform(get_node(index).children,
-                                     [&, parent_index = index](auto& child_id) {
-                                         return iterator{
-                                             child_id, parent_index, this};
-                                     });
+        return std::views::transform(
+            get_node(index).children,
+            [&](auto& child_id) { return iterator{child_id, this}; });
     }
 
     auto children_iterators(const_iterator it) const
     {
-        // NOTE we are setting prev node for all children iterators to their
-        // parent. This is required for proper subtree iteration when using this
-        // method in more complex traversals.
-        //
-        // Note also that setting prev to parent is correct for the first child,
-        // but incorrect for the rest of them -- as iterator is now implemented,
-        // each child prev should point to previous child, but now it is
-        // pointing to parent instead. This is fine for forward_iterator, but if
-        // in the future more complex iterators will be implemented, this should
-        // be dealt with.
         const auto index = find_true_index(it);
-        return std::views::transform(
-            get_node(index).children,
-            [&, parent_index = index](const auto& child_id) {
-                return const_iterator{child_id, parent_index, this};
-            });
+        return std::views::transform(get_node(index).children,
+                                     [&](const auto& child_id) {
+                                         return const_iterator{child_id, this};
+                                     });
     }
 
     auto empty() const -> bool { return children(cend()).size() == 0; }
@@ -732,24 +695,32 @@ public:
         return ss.str();
     }
 
-    auto begin() -> iterator { return ++iterator{0, -1, this}; }
+    auto begin() -> iterator
+    {
+        return iterator(
+            storage[0].children.empty() ? -1 : storage[0].children.front(),
+            this);
+    }
 
-    auto end() -> iterator { return iterator{-1, -1, this}; }
+    auto end() -> iterator { return iterator{-1, this}; }
 
     auto begin() const -> const_iterator
     {
-        return ++const_iterator{0, -1, this};
+        return const_iterator(
+            storage[0].children.empty() ? -1 : storage[0].children.front(),
+            this);
     }
 
-    auto end() const -> const_iterator { return const_iterator{-1, -1, this}; }
+    auto end() const -> const_iterator { return const_iterator{-1, this}; }
 
     auto cbegin() const -> const_iterator
     {
-        return ++const_iterator{0, -1, this};
+        return const_iterator(
+            storage[0].children.empty() ? -1 : storage[0].children.front(),
+            this);
     }
 
-    auto cend() const -> const_iterator { return const_iterator{-1, -1, this}; }
-
+    auto cend() const -> const_iterator { return const_iterator{-1, this}; }
     friend auto operator==(const LinearTree& lhs, const LinearTree& rhs) -> bool
     {
         // Obviously traversal alone cannot be used for comparing trees, so we
