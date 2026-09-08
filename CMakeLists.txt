@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22)
 
 set(PROJECT cpp_utils)
 
-project(${PROJECT} VERSION 1.0.0 LANGUAGES CXX)
+project(${PROJECT} VERSION 1.1.0 LANGUAGES CXX)
 
 option(BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
 option(ENABLE_TESTING "Enable Test Builds" OFF)
@@ -17,8 +17,12 @@ include(cmake/PreventInSourceBuilds.cmake)
 
 # Link this 'library' to set the c++ standard / compile-time options requested
 add_library(project_options INTERFACE)
-target_compile_features(project_options INTERFACE cxx_std_26)
-add_compile_options("-fconcepts-diagnostics-depth=2")
+if(MSVC)
+    target_compile_features(project_options INTERFACE /std:c++latest)
+else()
+    target_compile_features(project_options INTERFACE cxx_std_26)
+endif()
+# add_compile_options("-fconcepts-diagnostics-depth=2")
 
 if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
     option(ENABLE_BUILD_WITH_TIME_TRACE "Enable -ftime-trace to generate time tracing .json files on clang" OFF)
