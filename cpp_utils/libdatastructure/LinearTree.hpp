@@ -520,7 +520,7 @@ public:
         const auto index = find_true_index(it);
         return std::views::transform(get_node(index).children,
                                      [this](const auto& child_id) {
-                                         return get_node(child_id).payload;
+                                         return this->get_node(child_id).payload;
                                      });
     }
 
@@ -529,7 +529,7 @@ public:
         const auto index = find_true_index(it);
         return std::views::transform(get_node(index).children,
                                      [this](const auto& child_id) {
-                                         return get_node(child_id).payload;
+                                         return this->get_node(child_id).payload;
                                      });
     }
 
