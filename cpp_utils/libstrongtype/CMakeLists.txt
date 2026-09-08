@@ -26,6 +26,9 @@ if(ENABLE_TESTING)
         PRIVATE
             ${MODULE}
             GTest::gmock_main
+        INTERFACE
+            project_options
+            project_warnings
         )
     
     gtest_discover_tests(test_${MODULE})
