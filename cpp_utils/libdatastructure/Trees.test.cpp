@@ -19,6 +19,34 @@ struct CompoundType {
         -> bool = default;
 };
 
+// ============================================================================
+// ADL CUSTOMIZATION POINTS FOR TEST COUPLING
+// ============================================================================
+inline void serialize_payload(std::ostream& os, const CompoundType& val)
+{
+    os.write(reinterpret_cast<const char*>(&val.some_value),
+             sizeof(val.some_value));
+
+    const size_t str_len = val.id.size();
+    os.write(reinterpret_cast<const char*>(&str_len), sizeof(str_len));
+    if (str_len > 0) {
+        os.write(val.id.data(), static_cast<std::streamsize>(str_len));
+    }
+}
+
+inline void deserialize_payload(std::istream& is, CompoundType& val)
+{
+    is.read(reinterpret_cast<char*>(&val.some_value), sizeof(val.some_value));
+
+    size_t str_len = 0;
+    is.read(reinterpret_cast<char*>(&str_len), sizeof(str_len));
+    val.id.resize(str_len);
+    if (str_len > 0) {
+        is.read(val.id.data(), static_cast<std::streamsize>(str_len));
+    }
+}
+// ============================================================================
+
 template <typename ParamTuple>
 class GenericTreeFixture : public ::testing::Test {
 public:
@@ -2069,4 +2097,103 @@ TEST(LinearTreeCustomTest, StaleIteratorRecyclingDetection)
                 stale_target_it->designation;
         },
         std::runtime_error);
+}
+
+TYPED_TEST(GenericTreeFixture, binary_stream_blob_roundtrip_identity)
+{
+    // 1. Pull the CompoundTree variant from the current parameter TypeParam
+    // tuple
+    using CurrentCompoundTree = typename std::tuple_element_t<2, TypeParam>;
+
+    CurrentCompoundTree source_tree;
+
+    // 2. Construct a mock 3-level tree hierarchy of compound records
+    auto root = source_tree.begin();
+    auto child_1 = source_tree.insert(root, CompoundType{10, "ALPHA_BRANCH"});
+    source_tree.insert(root, CompoundType{20, "BETA_BRANCH"});
+    source_tree.insert(
+        child_1, CompoundType{30, "GAMMA_LEAF"}); // Sub-leaf under Child 1
+
+    // -------------------------------------------------------------------
+    //  SERIALIZATION PHASE (Simulating SQL BLOB Save)
+    // -------------------------------------------------------------------
+    std::stringstream blob_stream(std::ios::binary | std::ios::out |
+                                  std::ios::in);
+
+    // Stream operators are invoked seamlessly via non-member/hidden-friend
+    // paths
+    blob_stream << source_tree;
+    ASSERT_TRUE(blob_stream.good());
+
+    // -------------------------------------------------------------------
+    //  DESERIALIZATION PHASE (Simulating SQL BLOB Fetch)
+    // -------------------------------------------------------------------
+    CurrentCompoundTree restored_tree;
+    blob_stream >> restored_tree;
+    ASSERT_TRUE(blob_stream.good());
+
+    // -------------------------------------------------------------------
+    //  VALIDATION PHASE
+    // -------------------------------------------------------------------
+    // Structural metadata verification checks
+    EXPECT_EQ(source_tree.size(), restored_tree.size());
+    EXPECT_TRUE(source_tree == restored_tree);
+
+    // Iterative side-by-side element verification checks
+    auto src_it = source_tree.begin();
+    auto res_it = restored_tree.begin();
+
+    for (; src_it != source_tree.end() && res_it != restored_tree.end();
+         ++src_it, ++res_it) {
+        // Assert payloads match exactly
+        EXPECT_EQ(*src_it, *res_it);
+
+        // Assert children structural ranges match exactly at this coordinate
+        EXPECT_EQ(source_tree.children(src_it).size(),
+                  restored_tree.children(res_it).size());
+    }
+}
+
+// Checks that transformation functions for LinearTree (that uses optimized
+// version) and Tree transformation (that uses iterator-based slow version) are
+// routed and executed correctly
+TYPED_TEST(GenericTreeFixture, unified_transform_tree_algorithm)
+{
+    using CurrentTreeType = typename std::tuple_element_t<0, TypeParam>;
+
+    CurrentTreeType source_tree;
+
+    //  Build a distinct mock 3-level tree hierarchy using local payload data
+    auto root = source_tree.begin();
+    auto child_1 = source_tree.insert(root, 101);
+    source_tree.insert(root, 102);
+    source_tree.insert(child_1, 201); // Leaf node under Child 1
+
+    auto mapping_lambda = [](const int& val) -> std::string {
+        return "Transformed ID: " + std::to_string(val);
+    };
+
+    auto mapped_string_tree = transform_tree(source_tree, mapping_lambda);
+
+    EXPECT_EQ(source_tree.size(), mapped_string_tree.size());
+
+    // Compile-time check: Verify payload type correctly mutated to std::string
+    using TargetType = typename decltype(mapped_string_tree)::value_type;
+    static_assert(std::is_same_v<TargetType, std::string>);
+
+    // Walk both structures side-by-side to verify alignment and payload
+    // accuracy
+    auto src_it = source_tree.begin();
+    auto map_it = mapped_string_tree.begin();
+
+    for (; src_it != source_tree.end() && map_it != mapped_string_tree.end();
+         ++src_it, ++map_it) {
+        // Assert that data mutated according to our mapping function
+        EXPECT_EQ(*map_it, "Transformed ID: " + std::to_string(*src_it));
+
+        // Assert that parent-child topology parameters are structurally
+        // identical
+        EXPECT_EQ(source_tree.children(src_it).size(),
+                  mapped_string_tree.children(map_it).size());
+    }
 }

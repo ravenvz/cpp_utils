@@ -87,6 +87,12 @@ public:
 
     template <bool IsConst> friend class PreorderIterator;
 
+    // Grant private field access to the specialized transformation
+    // implementation function
+    template <typename FromType, typename Func>
+    friend auto transform_tree_implementation(const LinearTree<FromType>& tree,
+                                              Func&& mapping_func);
+
     using value_type = T;
     using iterator = PreorderIterator<false>;
     using const_iterator = PreorderIterator<true>;
@@ -747,6 +753,75 @@ public:
         return storage[static_cast<size_t>(storage_pos)];
     }
 
+    friend auto operator<<(std::ostream& os, const LinearTree<T>& tree)
+        -> std::ostream&
+    {
+        const size_t storage_size = tree.storage.size();
+        os.write(reinterpret_cast<const char*>(&storage_size),
+                 sizeof(storage_size));
+
+        for (const auto& node : tree.storage) {
+            os.write(reinterpret_cast<const char*>(&node.parent),
+                     sizeof(node.parent));
+            os.write(reinterpret_cast<const char*>(&node.pos),
+                     sizeof(node.pos));
+            os.write(reinterpret_cast<const char*>(&node.generation),
+                     sizeof(node.generation));
+
+            // ADL CUSTOMIZATION POINT: The compiler searches the payload's
+            // namespace
+            serialize_payload(os, node.payload);
+
+            const size_t children_count = node.children.size();
+            os.write(reinterpret_cast<const char*>(&children_count),
+                     sizeof(children_count));
+            if (children_count > 0) {
+                os.write(reinterpret_cast<const char*>(node.children.data()),
+                         static_cast<std::streamsize>(children_count *
+                                                      sizeof(int64_t)));
+            }
+        }
+        return os;
+    }
+
+    friend auto operator>>(std::istream& is, LinearTree<T>& tree)
+        -> std::istream&
+    {
+        size_t storage_size = 0;
+        if (!is.read(reinterpret_cast<char*>(&storage_size),
+                     sizeof(storage_size))) {
+            return is;
+        }
+
+        tree.storage.resize(storage_size);
+        while (!tree.free_positions.empty())
+            tree.free_positions.pop();
+
+        for (size_t i = 0; i < storage_size; ++i) {
+            auto& node = tree.storage[i];
+            is.read(reinterpret_cast<char*>(&node.parent), sizeof(node.parent));
+            is.read(reinterpret_cast<char*>(&node.pos), sizeof(node.pos));
+            is.read(reinterpret_cast<char*>(&node.generation),
+                    sizeof(node.generation));
+
+            // ADL CUSTOMIZATION POINT: Fetches payload data using custom user
+            // overrides
+            deserialize_payload(is, node.payload);
+
+            size_t children_count = 0;
+            is.read(reinterpret_cast<char*>(&children_count),
+                    sizeof(children_count));
+
+            node.children.resize(children_count);
+            if (children_count > 0) {
+                is.read(reinterpret_cast<char*>(node.children.data()),
+                        static_cast<std::streamsize>(children_count *
+                                                     sizeof(int64_t)));
+            }
+        }
+        return is;
+    }
+
 private:
     std::vector<Node> storage;
     std::queue<int64_t> free_positions;
@@ -847,6 +922,33 @@ private:
         }
     }
 };
+
+template <typename FromType, typename Func>
+auto transform_tree_implementation(const LinearTree<FromType>& tree,
+                                   Func&& mapping_func)
+{
+    using ToType =
+        std::remove_cvref_t<std::invoke_result_t<Func, const FromType&>>;
+    LinearTree<ToType> mapped_tree;
+
+    // Contiguous pre-allocation pass
+    mapped_tree.storage.resize(tree.storage.size());
+    mapped_tree.free_positions = tree.free_positions;
+
+    // Linear memory copy sweep
+    for (size_t i = 0; i < tree.storage.size(); ++i) {
+        const auto& src_node = tree.storage[i];
+        auto& dst_node = mapped_tree.storage[i];
+
+        dst_node.parent = src_node.parent;
+        dst_node.pos = src_node.pos;
+        dst_node.generation = src_node.generation;
+        dst_node.children = src_node.children;
+
+        dst_node.payload = mapping_func(src_node.payload);
+    }
+    return mapped_tree;
+}
 
 // Static assertions
 static_assert(std::is_default_constructible_v<LinearTree<int>>);

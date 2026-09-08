@@ -6,6 +6,7 @@
 #include <cpp_utils/libstrongtype/StrongType.hpp>
 #include <cstdint>
 #include <functional>
+#include <iostream>
 #include <iterator>
 #include <queue>
 #include <stack>
@@ -24,6 +25,27 @@ using DestinationPosition =
     strong_type::StrongType<int64_t,
                             struct DestinationPosTag,
                             strong_type::NumericRepresentation>;
+
+/**
+ * Compile-time Concept detection hook.
+ * Checks if the target container architecture is a flat, index-mapped
+ * LinearTree by checking for internal node storage access fields.
+ */
+template <typename T>
+concept IsLinearTreeArchitecture =
+    requires(const T& t) { t.get_node_generation(int64_t{0}); };
+
+// Template hooks to ensure that primitive types can be serialized
+// automatically.
+template <typename T> void serialize_payload(std::ostream& os, const T& val)
+{
+    os.write(reinterpret_cast<const char*>(&val), sizeof(T));
+}
+
+template <typename T> void deserialize_payload(std::istream& is, T& val)
+{
+    is.read(reinterpret_cast<char*>(&val), sizeof(T));
+}
 
 /*
  * Returns a range of elements in a subtree.
@@ -491,6 +513,30 @@ auto filter_it(const TreeType& tree,
     }
 
     return res;
+}
+
+// 1. Generic fallback implementation for pointer-heap trees
+template <typename TreeType, typename Func>
+auto transform_tree_implementation(const TreeType& tree, Func&& mapping_func)
+{
+    return tree.transform(std::forward<Func>(mapping_func));
+}
+
+/**
+ * @brief Creates a new tree by applying a mapping transformation function to
+ * every node payload.
+ *
+ * Uses ADL customization points to transparently select the ultra-fast flat
+ * memory shortcut for LinearTree, while gracefully falling back to standard
+ * tree member logic.
+ */
+template <typename TreeType, typename Func>
+auto transform_tree(const TreeType& tree, Func&& mapping_func)
+{
+    // The compiler resolves the correct implementation based on the tree type
+    // namespace
+    return transform_tree_implementation(tree,
+                                         std::forward<Func>(mapping_func));
 }
 
 } // namespace cpp_utils::datastructure
