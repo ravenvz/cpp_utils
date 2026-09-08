@@ -22,15 +22,16 @@ public:
 
     auto operator()(std::span<const Entity> entities) const
     {
-        return std::views::transform(entities, [this](const auto& entity) {
-            return operator()(entity);
-        });
+        return entities | std::views::transform([this](const auto& entity) {
+                   return this->operator()(entity);
+               });
     }
 
     auto operator()(std::span<const Dto> dtos) const
     {
-        return std::views::transform(
-            dtos, [this](const auto& dto) { return operator()(dto); });
+        return dtos | std::views::transform([this](const auto& dto) {
+                   return this->operator()(dto);
+               });
     }
 
 private:
