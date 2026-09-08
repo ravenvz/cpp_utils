@@ -1,3 +1,4 @@
 add_subdirectory(libstrongtype)
 add_subdirectory(libpattern)
 add_subdirectory(libdatastructure)
+add_subdirectory(benchmarks)

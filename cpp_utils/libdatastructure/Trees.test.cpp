@@ -2014,3 +2014,59 @@ TYPED_TEST(GenericTreeFixture, returns_filtered_tree_with_iterator_predicate)
                   return it->id == "1";
               }));
 }
+
+// A custom payload structure to test member access via operator->
+struct CustomPayload {
+    int id{0};
+    std::string designation{"Default"};
+};
+
+TEST(LinearTreeCustomTest, StaleIteratorRecyclingDetection)
+{
+    // Initialize a LinearTree explicitly tailored for this test case
+    cpp_utils::datastructure::LinearTree<CustomPayload> tree;
+
+    auto root_it = tree.begin();
+
+    // 1. Insert a distinctive node branch and capture its iterator
+    auto stale_target_it =
+        tree.insert(root_it, CustomPayload{42, "Original Node"});
+    ASSERT_EQ(stale_target_it->id, 42);
+    ASSERT_EQ(stale_target_it->designation, "Original Node");
+
+    // 2. Erase the target node.
+    // This pushes its storage array slot index into the free pool.
+    tree.erase(stale_target_it);
+
+    // 3. Force index recycling by inserting a completely new node payload.
+    // The underlying flat vector pops the freed slot and overwrites its
+    // contents.
+    auto recycled_slot_it =
+        tree.insert(root_it, CustomPayload{999, "Recycled Zombie Node"});
+    ASSERT_EQ(recycled_slot_it->id, 999);
+
+    // 4. VERIFICATION PHASE
+    // Original Code Failure Mode:
+    // dereferencing stale_target_it->id would blindly return 999!
+    //
+    // Modern Refactored Mode:
+    // The generational epoch check intercepts the mismatch and triggers a
+    // runtime error.
+
+    // Test the dereference operator*()
+    EXPECT_THROW(
+        { [[maybe_unused]] CustomPayload snapshot = *stale_target_it; },
+        std::runtime_error);
+
+    // Test the arrow member access operator->()
+    EXPECT_THROW(
+        { [[maybe_unused]] int read_id = stale_target_it->id; },
+        std::runtime_error);
+
+    EXPECT_THROW(
+        {
+            [[maybe_unused]] std::string read_name =
+                stale_target_it->designation;
+        },
+        std::runtime_error);
+}
