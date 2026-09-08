@@ -268,10 +268,6 @@ template <std::default_initializable T,
           template <typename> class... Extensions>
 class StrongType : public Extensions<StrongType<T, Tag, Extensions...>>... {
 
-    // Grant explicit friendship only to classes passed directly in the pack.
-    // Safe from compiler crashes.
-    friend struct Extensions<StrongType<T, Tag, Extensions...>>...;
-
     static constexpr bool is_non_comparable =
         (std::is_same_v<Extensions<StrongType>, NonComparable<StrongType>> ||
          ...);
