@@ -225,6 +225,7 @@ public:
         }
 
         PreorderIterator(const PreorderIterator&) = default;
+        auto operator=(const PreorderIterator&) -> PreorderIterator& = default;
 
         // Conversion constructor that permits convertion from iterator to
         // const_iterator but is disabled to prevent convertion from
