@@ -22,7 +22,7 @@ if(MSVC)
     target_compile_options(project_options INTERFACE /std:c++latest)
     target_compile_options(project_options INTERFACE /bigobj)
     # needed to resolve issues with empty base optimization
-    target_compile_options(project_options PRIVATE /controlFlowGuard- /volatile:iso)
+    target_compile_options(project_options INTERFACE /controlFlowGuard- /volatile:iso)
 else()
     target_compile_features(project_options INTERFACE cxx_std_26)
 endif()
