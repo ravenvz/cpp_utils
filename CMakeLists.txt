@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22)
 
 set(PROJECT cpp_utils)
 
-project(${PROJECT} VERSION 1.1.6 LANGUAGES CXX)
+project(${PROJECT} VERSION 1.1.7 LANGUAGES CXX)
 
 option(BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
 option(ENABLE_TESTING "Enable Test Builds" OFF)
@@ -22,7 +22,7 @@ if(MSVC)
     target_compile_options(project_options INTERFACE /std:c++latest)
     target_compile_options(project_options INTERFACE /bigobj)
     # needed to resolve issues with empty base optimization
-    target_compile_options(run_tests PRIVATE /controlFlowGuard- /volatile:iso)
+    target_compile_options(project_options PRIVATE /controlFlowGuard- /volatile:iso)
 else()
     target_compile_features(project_options INTERFACE cxx_std_26)
 endif()
