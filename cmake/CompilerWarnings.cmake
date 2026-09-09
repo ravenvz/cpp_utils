@@ -28,7 +28,7 @@ function(set_project_warnings project_name)
       /w14905 # wide string literal cast to 'LPSTR'
       /w14906 # string literal cast to 'LPWSTR'
       /w14928 # illegal copy-initialization; more than one user-defined conversion has been implicitly applied
-      /wd54996 # do not treat usage of deprecated functionality as error (remaps 4996 warning as level-5 warning shielding it from global /WX)
+      /wd4996 # remove deprecation warning TODO revert back when all deprecated functionality is removed
       /permissive- # standards conformance mode for MSVC compiler.
   )
 
