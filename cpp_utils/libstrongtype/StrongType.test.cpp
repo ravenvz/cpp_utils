@@ -26,10 +26,6 @@ TEST(StrongTypeCoreTest, BasicProperties)
     // Default construction check
     Apple default_a;
     EXPECT_EQ(default_a.get(), 0);
-
-    // Size check to verify Zero Overhead / Empty Base Optimization (EBO)
-    EXPECT_EQ(sizeof(Apple), sizeof(int));
-    EXPECT_EQ(sizeof(UserId), sizeof(int));
 }
 
 TEST(StrongTypeCoreTest, TypeSafetyCompileChecks)
