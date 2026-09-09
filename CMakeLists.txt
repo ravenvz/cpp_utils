@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22)
 
 set(PROJECT cpp_utils)
 
-project(${PROJECT} VERSION 1.1.4 LANGUAGES CXX)
+project(${PROJECT} VERSION 1.1.5 LANGUAGES CXX)
 
 option(BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
 option(ENABLE_TESTING "Enable Test Builds" OFF)
@@ -20,6 +20,7 @@ add_library(project_options INTERFACE)
 
 if(MSVC)
     target_compile_options(project_options INTERFACE /std:c++latest)
+    target_compile_options(project_options INTERFACE /bigobj)
 else()
     target_compile_features(project_options INTERFACE cxx_std_26)
 endif()
