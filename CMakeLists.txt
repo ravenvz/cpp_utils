@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22)
 
 set(PROJECT cpp_utils)
 
-project(${PROJECT} VERSION 1.1.7 LANGUAGES CXX)
+project(${PROJECT} VERSION 1.1.8 LANGUAGES CXX)
 
 option(BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
 option(ENABLE_TESTING "Enable Test Builds" OFF)
