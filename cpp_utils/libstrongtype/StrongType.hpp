@@ -261,12 +261,20 @@ struct NumericRepresentation : Addable<Derived>,
     }
 };
 
+// --- Inside StrongType.hpp ---
+#if defined(_MSC_VER)
+#define CPP_UTILS_MSVC_EBO __declspec(empty_bases)
+#else
+#define CPP_UTILS_MSVC_EBO
+#endif
+
 // Encapsulates an underlying primitive or object into a type-safe
 // wrapper.
 template <std::default_initializable T,
           typename Tag,
           template <typename> class... Extensions>
-class StrongType : public Extensions<StrongType<T, Tag, Extensions...>>... {
+class CPP_UTILS_MSVC_EBO StrongType
+    : public Extensions<StrongType<T, Tag, Extensions...>>... {
 
     static constexpr bool is_non_comparable =
         (std::is_same_v<Extensions<StrongType>, NonComparable<StrongType>> ||

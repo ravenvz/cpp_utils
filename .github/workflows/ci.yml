@@ -74,3 +74,10 @@ jobs:
         # Run CTest
         cd build
         ctest --progress --output-on-failure -C ${{ matrix.build_type }}
+
+    # THIS OPENS THE INTERACTIVE REMOTE TERMINAL IF THE PASS FAILS
+    - name: SSH Debug Session on Failure
+      uses: mxschmitt/action-tmate@v3
+      if: failure()
+      with:
+        limit-access-to-actor: true # Security guard: Only YOU can log in
