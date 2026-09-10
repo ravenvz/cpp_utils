@@ -1,7 +1,7 @@
-add_subdirectory(libalgorithm)
-add_subdirectory(libstrongtype)
-add_subdirectory(libpattern)
-add_subdirectory(libdatastructure)
+add_subdirectory(algorithms)
+add_subdirectory(strong_type)
+add_subdirectory(patterns)
+add_subdirectory(datastructures)
 
 if (ENABLE_BENCHMARKS) 
     add_subdirectory(benchmarks)

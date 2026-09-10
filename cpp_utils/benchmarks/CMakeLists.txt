@@ -15,13 +15,13 @@ add_executable(Trees.benchmark Trees.benchmark.cpp)
 
 # 3. Target includes (adjust relative pathing to point back to library header root)
 target_include_directories(Trees.benchmark PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../libdatastructure  # Target where Tree.hpp & ImmutableTree.hpp live
+    ${CMAKE_CURRENT_SOURCE_DIR}/../datastructures  # Target where Tree.hpp & ImmutableTree.hpp live
 )
 
 # 4. Link Google Benchmark & internal data dependencies
 target_link_libraries(Trees.benchmark PRIVATE 
     benchmark::benchmark
-    libdatastructure
+    datastructures
 )
 
 # 5. Mirror specific release optimization and strict warning profiles for this module
